@@ -274,6 +274,34 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
 .eqres{border-radius:12px;padding:10px 12px;text-align:center}
 .eqres small{display:block;font-size:14px;font-weight:700}
 .eqres b{display:block;font:900 clamp(30px,10vw,76px)/1.15 var(--font);white-space:nowrap}
+
+/* ===== 在庫 ===== */
+.stockcard{border-width:2px}
+.stockcard.ok{background:#e3f2e6;border-color:#8cc59a}
+.stockcard.warn{background:#fff1d0;border-color:#e0b92a}
+.stockcard.bad{background:#fbe3de;border-color:#d98c7e}
+.stock-big{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:2px 0}
+.stock-big b{font:900 clamp(64px,22vw,130px)/1.05 var(--font)}
+.stock-big small{font:700 24px var(--font)}
+.stockcard.ok .stock-big{color:var(--good)}.stockcard.warn .stock-big{color:#8a5a00}.stockcard.bad .stock-big{color:var(--bad)}
+.stock-st{text-align:center;font:700 17px var(--font);margin-bottom:10px}
+.stock-row{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;border-top:1px solid rgba(0,0,0,.1);padding-top:8px}
+.stock-row small{display:block;font-size:12px;color:var(--muted)}
+.stock-row b{font:900 20px/1.2 var(--font)}
+.qbig{font:900 clamp(56px,20vw,110px)/1.05 var(--font);text-align:center}
+.qbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.qbtns button{border:2px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:12px;font:900 22px var(--font);min-height:56px;cursor:pointer}
+.qbtns button.sub{border-color:var(--line);color:var(--muted);font-size:15px}
+.qbtns button:active{background:var(--accent-soft)}
+.bigbtn{display:block;width:100%;margin-top:12px;min-height:60px;font-size:19px;border-radius:14px}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.hist li:last-child{border-bottom:0}
+.hist .tm{color:var(--muted);min-width:52px}
+.hist .q{font:900 20px var(--font);min-width:70px}
+.hist .why{flex:1;color:var(--muted);font-size:13px}
+.lowbox{display:flex;align-items:center;gap:8px}
+.lowbox input{width:80px;font:700 18px var(--font);padding:8px;border:1px solid var(--line);border-radius:8px;text-align:center}
 </style>
 </head>
 <body>
@@ -304,6 +332,8 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   /* ================================================================ */
   var IS_PICKUP=/[?&]view=pickup\b/.test(location.search);   /* 受け渡し担当の端末（提供済みを押す） */
   var IS_COOK=IS_PICKUP||/[?&]view=cook\b/.test(location.search);
+  var IS_STOCK=/[?&]view=stock\b/.test(location.search);   /* 在庫管理（出荷・調整の入力）*/
+  var STOCK_ITEM='ソーセージロール';   /* 在庫を数える商品名 */
   var DAYS=[{key:'2026-11-20',label:'11/20(金)'},{key:'2026-11-21',label:'11/21(土)'}];
   var state={products:[],orders:[]};
   var ui={tab:'register',day:null,sumDay:'all',report:'',cart:null,done:null};
@@ -744,12 +774,130 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   setInterval(pullBoard,5000);
   setInterval(function(){if(ui.tab==='board'&&!ui.cart&&!ui.done)render();},30000);
 
+
+  /* ---------- 在庫（ソーセージロール） ---------- */
+  function stockCalc(day,orders,served,events){
+    var ship=0,adj=0,ordered=0,sv=0;
+    (events||[]).forEach(function(e){if(e.day!==day)return;if(e.kind==='ship')ship+=e.qty;else if(e.kind==='adjust')adj+=e.qty;});
+    function cnt(o){var n=0;(o.items||[]).forEach(function(it){if(it.name===STOCK_ITEM)n+=it.qty;});return n;}
+    (orders||[]).forEach(function(o){if(o.day===day)ordered+=cnt(o);});
+    (served||[]).forEach(function(o){if(o.day===day){var c=cnt(o);ordered+=c;sv+=c;}});
+    return {ship:ship,adj:adj,ordered:ordered,served:sv,making:ordered-sv,stock:ship+adj-ordered};
+  }
+  function stockLow(){return Math.max(0,parseInt(lsGet('reji-stock-low','15'),10)||0);}
+  function stockCard(c,day,events){
+    var low=stockLow(),cl,tx;
+    if(c.stock<0){cl='bad';tx='売りすぎです（在庫が足りません）';}
+    else if(c.stock<=low){cl='warn';tx='発注の目安です（残り'+low+'本以下）';}
+    else{cl='ok';tx='足りています';}
+    var last=0;(events||[]).forEach(function(e){if(e.day===day&&e.kind==='ship'&&e.ts>last)last=e.ts;});
+    var ago=last?'最後の出荷 '+Math.max(0,Math.floor((Date.now()-last)/60000))+'分前（'+timeStr(last)+'）':'この日の出荷はまだありません';
+    var adjS=(c.adj>0?'+':c.adj<0?'−':'')+Math.abs(c.adj);
+    return '<div class="card stockcard '+cl+'"><h2>テント在庫（'+dayLabel(day)+'・'+esc(STOCK_ITEM)+'）</h2><div class="stock-big"><b class="num">'+c.stock+'</b><small>本</small></div><div class="stock-st">'+tx+'</div>'
+      +'<div class="stock-row"><div><small>出荷</small><b class="num">'+c.ship+'</b></div><div><small>調整</small><b class="num">'+adjS+'</b></div><div><small>注文</small><b class="num">'+c.ordered+'</b></div><div><small>提供済み</small><b class="num">'+c.served+'</b></div><div><small>作成中</small><b class="num">'+c.making+'</b></div></div>'
+      +'<p class="note" style="margin:8px 0 0;text-align:center">在庫 ＝ 出荷 ＋ 調整 − 注文　／　'+ago+'</p></div>';
+  }
+  function startStock(){
+    var nav=document.getElementById('tabs');
+    var h1=document.querySelector('header h1');if(h1)h1.textContent='理大祭・在庫';
+    loadBq();
+    var chip=document.getElementById('status');
+    var st={tab:'stock',day:ui.day,qty:0,sign:-1,aq:0,reason:'ロス',mode:'delta',confirm:null};
+    var list=[],done=[],events=[],last=0,lastAct=0;
+    function drawNav(){
+      nav.style.gridTemplateColumns='repeat(3,1fr)';
+      nav.innerHTML=[['stock','在庫'],['ship','出荷を入力'],['adj','調整']].map(function(t){return '<button type="button" data-sa="tab" data-v="'+t[0]+'"'+(st.tab===t[0]?' aria-current="true"':'')+'>'+t[1]+'</button>';}).join('');
+    }
+    function evs(kind){return events.filter(function(e){return e.day===st.day&&e.kind===kind;}).sort(function(a,b){return b.ts-a.ts;});}
+    function hist(kind){
+      var a=evs(kind);if(!a.length)return '<div class="empty">まだありません</div>';
+      return '<ul class="hist">'+a.map(function(e){
+        var q=kind==='ship'?e.qty+'本':(e.qty>0?'+':'−')+Math.abs(e.qty)+'本';
+        return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+esc(e.reason||'')+'</span><button type="button" class="btn danger" data-sa="void" data-id="'+esc(e.id)+'">'+(st.confirm===e.id?'もう一度押すと取消':'取消')+'</button></li>';
+      }).join('')+'</ul>';
+    }
+    function draw(force){
+      var v=document.getElementById('view');if(!v)return;
+      var ae=document.activeElement;if(!force&&ae&&ae.tagName==='INPUT'&&v.contains(ae))return;
+      var now=Date.now(),stale=!last||now-last>20000;
+      if(chip){chip.textContent=stale?'通信待ち':'更新 '+new Date(last).toLocaleTimeString('ja-JP');chip.className='chip'+(stale?' warn':'');}
+      var c=stockCalc(st.day,list,done,events);
+      var h='<section><div class="card"><div class="seg" role="group" aria-label="日付">'+DAYS.map(function(d){return '<button type="button" data-sa="day" data-v="'+d.key+'" aria-pressed="'+(st.day===d.key)+'">'+d.label+'</button>';}).join('')+'</div></div>';
+      if(bq.length)h+='<div class="card" style="border-color:var(--tomato)"><b>送信待ち '+bq.length+'件</b><div class="note" style="margin:4px 0 0">電波がつながると自動で送られます。</div></div>';
+      if(stale&&BOARD_URL)h+='<div class="card" style="border-color:var(--tomato)"><b>通信が途絶えています。</b><div class="note" style="margin:4px 0 0">'+(last?'最後に更新できた時刻：'+new Date(last).toLocaleTimeString('ja-JP')+'。':'まだ読み込めていません。')+'電波の良い場所で、ページを再読み込みしてください。</div></div>';
+      h+=stockCard(c,st.day,events);
+      if(st.tab==='stock'){
+        h+='<div class="card"><h2>発注の目安（この本数以下で知らせます）</h2><div class="lowbox"><input id="st-low" type="number" inputmode="numeric" min="0" value="'+stockLow()+'"><span>本</span></div><p class="note" style="margin:6px 0 0">この端末だけの設定です。</p></div>';
+        h+='<div class="card"><h2>出荷の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('ship').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
+        h+='<div class="card"><h2>調整の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('adjust').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
+      }else if(st.tab==='ship'){
+        h+='<div class="card"><h2>いま運び出す本数</h2><div class="qbig num">'+st.qty+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="sq" data-v="1">+1</button><button type="button" data-sa="sq" data-v="5">+5</button><button type="button" data-sa="sq" data-v="10">+10</button><button type="button" data-sa="sq" data-v="20">+20</button><button type="button" class="sub" data-sa="sq" data-v="-1">−1</button><button type="button" class="sub" data-sa="sq" data-v="-5">−5</button><button type="button" class="sub" data-sa="sq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
+          +'<button type="button" class="btn bigbtn" data-sa="ship"'+(st.qty>0?'':' disabled')+'>'+(st.qty>0?st.qty+'本の出荷を記録する':'本数を入れてください')+'</button></div>';
+        h+='<div class="card"><h2>出荷の記録（'+dayLabel(st.day)+'・日計 '+c.ship+'本）</h2>'+hist('ship')+'</div>';
+      }else{
+        h+='<div class="card"><div class="seg" role="group" aria-label="調整のしかた"><button type="button" data-sa="mode" data-v="delta" aria-pressed="'+(st.mode==='delta')+'">増減を入れる</button><button type="button" data-sa="mode" data-v="actual" aria-pressed="'+(st.mode==='actual')+'">実数にそろえる</button></div></div>';
+        if(st.mode==='delta'){
+          h+='<div class="card"><h2>理由</h2><div class="seg" role="group" aria-label="理由">'+['ロス','持越し','数え直し'].map(function(r){return '<button type="button" data-sa="reason" data-v="'+r+'" aria-pressed="'+(st.reason===r)+'">'+r+'</button>';}).join('')+'</div>'
+            +'<h2 style="margin-top:14px">増やす・減らす</h2><div class="seg" role="group" aria-label="符号"><button type="button" data-sa="sign" data-v="1" aria-pressed="'+(st.sign===1)+'">＋ 増やす</button><button type="button" data-sa="sign" data-v="-1" aria-pressed="'+(st.sign===-1)+'">− 減らす</button></div>'
+            +'<div class="qbig num" style="margin-top:10px">'+(st.sign>0?'+':'−')+st.aq+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="aq" data-v="1">+1</button><button type="button" data-sa="aq" data-v="5">+5</button><button type="button" data-sa="aq" data-v="10">+10</button><button type="button" data-sa="aq" data-v="20">+20</button><button type="button" class="sub" data-sa="aq" data-v="-1">−1</button><button type="button" class="sub" data-sa="aq" data-v="-5">−5</button><button type="button" class="sub" data-sa="aq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
+            +'<button type="button" class="btn bigbtn" data-sa="adj"'+(st.aq>0?'':' disabled')+'>'+(st.aq>0?st.reason+'：'+(st.sign>0?'+':'−')+st.aq+'本を記録する':'本数を入れてください')+'</button></div>';
+        }else{
+          h+='<div class="card"><h2>いま、揚げる前のロールは何本ありますか</h2><div class="lowbox"><input id="st-actual" type="number" inputmode="numeric" min="0" placeholder="数えた本数"><span>本</span></div>'
+            +'<p class="note" style="margin:8px 0 0">計算上の在庫は '+c.stock+'本です。入れた本数との差を、自動で調整として記録します。<br>作成中の注文がないときに数えてください。'+(c.making>0?'いまは作成中が '+c.making+'本あります。揚げ待ちの分は引いて入力してください。':'')+'</p>'
+            +'<button type="button" class="btn bigbtn" data-sa="actual">この本数にそろえる</button></div>';
+        }
+        h+='<div class="card"><h2>調整の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('adjust')+'</div>';
+      }
+      v.innerHTML=h+'</section>';
+    }
+    function send(msg){boardPush(msg);}
+    function addEvent(kind,qty,reason){
+      var e={id:uid(),day:st.day,kind:kind,qty:qty,reason:reason||'',ts:Date.now()};
+      events.push(e);lastAct=Date.now();send({op:'stock',event:e});
+    }
+    document.addEventListener('click',function(ev){
+      var t=ev.target.closest('[data-sa]');if(!t)return;
+      var a=t.dataset.sa,v=t.dataset.v;
+      if(a==='tab'){st.tab=v;st.confirm=null;drawNav();var m=document.getElementById('view');if(m)m.scrollTop=0;}
+      else if(a==='day'){st.day=v;st.confirm=null;}
+      else if(a==='sq'){st.qty=v==='0'?0:Math.max(0,st.qty+parseInt(v,10));}
+      else if(a==='aq'){st.aq=v==='0'?0:Math.max(0,st.aq+parseInt(v,10));}
+      else if(a==='sign'){st.sign=parseInt(v,10);}
+      else if(a==='reason'){st.reason=v;st.sign=v==='ロス'?-1:v==='持越し'?1:st.sign;}
+      else if(a==='mode'){st.mode=v;}
+      else if(a==='ship'){if(st.qty>0){addEvent('ship',st.qty,'');toast(st.qty+'本の出荷を記録しました');st.qty=0;}}
+      else if(a==='adj'){if(st.aq>0){addEvent('adjust',st.sign*st.aq,st.reason);toast('調整を記録しました');st.aq=0;}}
+      else if(a==='actual'){
+        var inp=document.getElementById('st-actual'),n=inp?parseInt(inp.value,10):NaN;
+        if(!(n>=0)){toast('数えた本数を入れてください');}
+        else{var c=stockCalc(st.day,list,done,events),d=n-c.stock;if(d===0)toast('差はありません');else{addEvent('adjust',d,'数え直し');toast('在庫を '+n+'本にそろえました');}}
+      }
+      else if(a==='void'){
+        if(st.confirm===t.dataset.id){events=events.filter(function(e){return e.id!==t.dataset.id;});lastAct=Date.now();send({op:'stockvoid',id:t.dataset.id});st.confirm=null;toast('取り消しました');}
+        else{st.confirm=t.dataset.id;var cid=st.confirm;setTimeout(function(){if(st.confirm===cid){st.confirm=null;draw(true);}},3000);}
+      }
+      draw(true);
+    });
+    document.addEventListener('change',function(ev){
+      if(ev.target&&ev.target.id==='st-low'){lsSet('reji-stock-low',Math.max(0,parseInt(ev.target.value,10)||0));toast('目安を保存しました');draw(true);}
+    });
+    function poll(){
+      if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
+      fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+        list=j.orders||[];done=j.served||[];events=j.stock||[];last=Date.now();draw();
+      }).catch(function(){draw();});
+    }
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});
+    drawNav();draw(true);poll();setInterval(poll,5000);setInterval(draw,10000);
+  }
+
   /* ---------- 調理担当の閲覧画面（?view=cook） ---------- */
   function startCook(){
     var nav=document.getElementById('tabs');
     var ctab=0;
     function drawTabs(){
       if(!nav)return;
+      nav.style.gridTemplateColumns='repeat(2,1fr)';
       nav.innerHTML='<button type="button" data-ctab="0"'+(ctab===0?' aria-current="true"':'')+'>調理状況</button><button type="button" data-ctab="1"'+(ctab===1?' aria-current="true"':'')+'>カナル調理スタッフ用</button>';
     }
     if(nav){if(IS_PICKUP)nav.style.display='none';else drawTabs();}
@@ -757,7 +905,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     if(IS_PICKUP)loadBq();
     var lastAct=0;
     var chip=document.getElementById('status');
-    var list=[],done=[],last=0,failed=false;
+    var list=[],done=[],events=[],last=0,failed=false;
     function draw(){
       var v=document.getElementById('view');
       var now=Date.now(),stale=!last||now-last>20000;
@@ -772,6 +920,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
         var tday=DAYS.some(function(d){return d.key===jstToday();})?jstToday():'',sv={},sn=[];
         list.concat(done).forEach(function(o){(o.items||[]).forEach(function(it){if(sv[it.name]==null){sv[it.name]=0;sn.push(it.name);}});});
         done.forEach(function(o){if(tday&&o.day!==tday)return;(o.items||[]).forEach(function(it){sv[it.name]+=it.qty;});});
+        h+=stockCard(stockCalc(ui.day,list,done,events),ui.day,events);
         h+='<div class="card board-sum" style="background:#e9f3ea;border-color:#9cc9a6"><h2>出た数（提供済みの合計・'+(tday?'本日 '+dayLabel(tday):'全日')+'）</h2>';
         if(!sn.length)h+='<div class="empty">まだありません</div>';
         sn.forEach(function(n){h+='<div class="cook" style="border-bottom-color:#9cc9a6"><span>'+esc(n)+'</span><b class="num" style="color:var(--good)">'+sv[n]+'<small>'+unitFor(n)+'</small></b></div>';});
@@ -797,7 +946,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     function poll(){
       if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
       fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});done=(j.served||[]).slice().sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);});last=Date.now();failed=false;draw();
+        events=j.stock||[];list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});done=(j.served||[]).slice().sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);});last=Date.now();failed=false;draw();
       }).catch(function(){failed=true;draw();});
     }
     function act(id,st){
@@ -820,6 +969,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   }
 
   /* ---------- boot ---------- */
+  if(IS_STOCK){startStock();return;}
   if(IS_COOK){startCook();return;}
   loadBq();
   loadOutbox();

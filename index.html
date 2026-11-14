@@ -682,7 +682,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     var nav=document.getElementById('tabs');if(nav)nav.style.display='none';
     var h1=document.querySelector('header h1');if(h1)h1.textContent='調理 受け渡し状況';
     var chip=document.getElementById('status');
-    var list=[],last=0,failed=false;
+    var list=[],done=[],last=0,failed=false;
     function draw(){
       var v=document.getElementById('view');
       var now=Date.now(),stale=!last||now-last>20000;
@@ -701,12 +701,18 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
         var m=Math.max(0,Math.floor((now-o.ts)/60000));
         h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過</div></div></div>';
       });
+      h+='</div></div>';
+      h+='<div class="card"><h2>完了（提供済み・直近30分）</h2><div style="display:flex;flex-direction:column;gap:8px">';
+      if(!done.length)h+='<div class="empty">なし</div>';
+      done.forEach(function(o){
+        h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">✓ 完了 '+(o.servedAt?timeStr(o.servedAt):'')+'</div></div></div>';
+      });
       v.innerHTML=h+'</div></div></section>';
     }
     function poll(){
       if(!BOARD_URL||document.hidden)return;
       fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});last=Date.now();failed=false;draw();
+        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});done=j.served||[];last=Date.now();failed=false;draw();
       }).catch(function(){failed=true;draw();});
     }
     document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});

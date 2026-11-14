@@ -34,7 +34,7 @@ header h1{font:900 19px/1.2 var(--font);margin:0}
 .chip{font-size:12px;padding:2px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:700;white-space:nowrap}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 16px 24px}
-nav{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{border:0;background:none;color:var(--muted);font:700 14px var(--font);padding:13px 4px;min-height:48px;cursor:pointer;border-top:3px solid transparent}
 nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--accent)}
 button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -303,6 +303,8 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
 .lowbox{display:flex;align-items:center;gap:8px}
 .lowbox input{width:80px;font:700 18px var(--font);padding:8px;border:1px solid var(--line);border-radius:8px;text-align:center}
 .reqbar{margin:10px auto 0;max-width:420px;text-align:center;background:#fde9b8;border:2px solid #e0a63a;color:#6b4300;border-radius:12px;padding:10px 12px;font-size:1.05rem}.reqbar b{font-size:1.5rem}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.pair>.card{margin-bottom:0}@media (max-width:480px){.pair{grid-template-columns:1fr}}
+nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
 </style>
 </head>
 <body>
@@ -316,6 +318,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     <button data-tab="register">レジ</button>
     <button data-tab="board" id="tab-board">受け渡し</button>
     <button data-tab="sales">売上確認</button>
+    <button data-tab="qr">各係用QRコード</button>
     <button data-tab="settings">設定</button>
   </nav>
 </div>
@@ -537,10 +540,13 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">提供済み'+(o.servedAt?' '+timeStr(o.servedAt):'')+'</div></div>'+(BOARD_URL?'':'<button type="button" class="btn ghost" data-act="unserve" data-id="'+esc(o.id)+'">作成中に戻す</button>')+'</div>';
     });
     h+='</div></div>';
-    if(BOARD_URL){
-      h+='<div class="card"><h2>調理・受け渡し担当用のQRコード</h2><div class="qrs"><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAAB+UlEQVR4Xu1YQYrDMBDT1IYenR85Pwv9mQv7kTxgwT4WXGbRTNu9bOlp6RzqQxpID4qikWSL4um6Hp4/Az4PX5EA7fxP6kBpqVcAszjfdUakr6oqUNO+Era2PNakyreIiBYiK8oJpZHYsc3SMCS/+irvfJWx8tOX03VB5r2tdwL6c90BlXZZILKhNFdySLT84Ar+pF3SPGesX99AUYyY3J5FBGPLqBgbzQG4isgSEC3UV0eiM7h90SVUNZ6DQXulGxR1m1Vtqpq0zYh+S24dqnZPikrYlhTxuD1giO5y7KBQPdqGzLHOiA5m3FKobRrDTDHeh1WC14PKK822po5pbxFPCRyrSSto5l11suG4dEOi7YRqbsDl9kWqY3JraN0QtJNbX3HRGjYK1bzL7Css2ttY0QeK3icOYdPBQ8FjV3s1PdSoU0Z4FK1y1rwt0BZiJi+njMWAhQHcnRG8trBTBhMATLR0M0+0iD3h1mosyLzYuIlFVYLJlXowkNZ1LYKDpkNNBEwNWEyYeuNy63sHCuBhuT568VoN+60ITw+StmPndvKyILOShdyX0a80md+6d02Q26gOZuWWgK13WR8L3MFuVdyhupX5TUTd/q5ztu2Y7mu2iYt3ssQ4uG3JPR2sipsDB+T2cX7r1ct6gu3UQk6ZfE7y/82pfwBpIrD9+UoeYgAAAABJRU5ErkJggg==" alt="調理担当用QRコード" width="150" height="150"><b>調理担当</b><span>作成中の本数を見るだけ</span></div><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2AQAAAADNaUdlAAACcUlEQVR4Xu1ZW47jIBAsBkvzSaQ9QI5CrjY3w0fZG+DPSESMqhqyP7vx/OzYLQ2yIsfIAZquR5PQ8ao93l52Az/9r9tefNArfyD23oAGxJpjzb1m/Wxue+8f3Y9ec+89drZY0RLv7bPX88+f8Qvhhu0G4H7JyxbadlsAbIGfR8f3y+Ov4bLGurbUF6x/cvLL7/+jfeP73IK8APdrib+5HWzfOP5f2974M/8F2yggxJobeO8k/9cQwlj7NoDwXvEIIVzOH/8FSQq24XEBrvXxq+o+m66dXr+YP+L/woUkUqgue9gd8L9m3pCRSgN6L1SCii4V8DD/3lKR5jLgFvkm8fWgv2/SqdyAJZW23Vr6ACWAS6C12OOvo/uZ/0weLSEqebgdvfjyP83Aq2m3JOZPxIGD/BfbyLmVloqQSyDrcuHfmDn3a38Xcy7AgrykIvx6yP/OsAPaAuT51STg/PEX4YvtB3KVS1IB6cLR/LI3vumvai4rwax+0RMP+c9QQ1RjzCPaH1rmwX9SpMwCaSEDCJAi+/A/yp/JolPIBgR85D9znuRD/pEFMv/jgv/JPM8Dk6G5E8I+9Ff8Sbcvz2CFWOQTUdAefx3dP8Gr+vfp/7UWebmj57c3/qjfzfPTfwrC3APuhY/4m9UfQLBCkuWYk/qLPF+s8jL/P89htIS9/Tu6fzifobkCslBMRfBR/87zZ9bvxCy3wI6zvOS/nTyPM5NK5Fo578O/Tf85Tv5VfFnx6yP/x/wJhGHbDNGSMwf4fcZfth8qgWUkqAUu5j//f7GDOBkJ8g8vD/MfhieqEFblxXuzQKeff/j5//Rl+9/6/AmVsx5P81+o6AAAAABJRU5ErkJggg==" alt="受け渡し担当用QRコード" width="150" height="150"><b>受け渡し担当</b><span>「提供済み」を押す</span></div></div><div class="row" style="margin-top:10px"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div>';
-    }
+    if(BOARD_URL&&bq.length)h+='<div class="card" style="border-color:var(--tomato)"><b>同期待ち '+bq.length+'件</b><div class="note" style="margin:4px 0 0">電波がつながると自動で送られます。</div><button type="button" class="btn ghost" data-act="resyncboard" style="margin-top:8px">いま送る</button></div>';
     h+='<p class="note" style="margin:0">'+(BOARD_URL?'この画面は表示だけです。会計を確定すると「作成中」に入り、受け渡し担当の端末で「提供済み」を押すと「提供済み」に移ります。':'会計を確定すると「作成中」に入ります。お客様に渡したら「提供済み」を押してください。')+'売上の集計には影響しません。</p></section>';
+    return h;
+  }
+  function qrView(){
+    var h='<section><div class="card"><h2>各係用QRコード</h2><div class="qrs"><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2AQAAAADNaUdlAAACcUlEQVR4Xu1ZW47jIBAsBkvzSaQ9QI5CrjY3w0fZG+DPSESMqhqyP7vx/OzYLQ2yIsfIAZquR5PQ8ao93l52Az/9r9tefNArfyD23oAGxJpjzb1m/Wxue+8f3Y9ec+89drZY0RLv7bPX88+f8Qvhhu0G4H7JyxbadlsAbIGfR8f3y+Ov4bLGurbUF6x/cvLL7/+jfeP73IK8APdrib+5HWzfOP5f2974M/8F2yggxJobeO8k/9cQwlj7NoDwXvEIIVzOH/8FSQq24XEBrvXxq+o+m66dXr+YP+L/woUkUqgue9gd8L9m3pCRSgN6L1SCii4V8DD/3lKR5jLgFvkm8fWgv2/SqdyAJZW23Vr6ACWAS6C12OOvo/uZ/0weLSEqebgdvfjyP83Aq2m3JOZPxIGD/BfbyLmVloqQSyDrcuHfmDn3a38Xcy7AgrykIvx6yP/OsAPaAuT51STg/PEX4YvtB3KVS1IB6cLR/LI3vumvai4rwax+0RMP+c9QQ1RjzCPaH1rmwX9SpMwCaSEDCJAi+/A/yp/JolPIBgR85D9znuRD/pEFMv/jgv/JPM8Dk6G5E8I+9Ff8Sbcvz2CFWOQTUdAefx3dP8Gr+vfp/7UWebmj57c3/qjfzfPTfwrC3APuhY/4m9UfQLBCkuWYk/qLPF+s8jL/P89htIS9/Tu6fzifobkCslBMRfBR/87zZ9bvxCy3wI6zvOS/nTyPM5NK5Fo578O/Tf85Tv5VfFnx6yP/x/wJhGHbDNGSMwf4fcZfth8qgWUkqAUu5j//f7GDOBkJ8g8vD/MfhieqEFblxXuzQKeff/j5//Rl+9/6/AmVsx5P81+o6AAAAABJRU5ErkJggg==" alt="受け渡し担当のQRコード" width="150" height="150"><b>受け渡し担当</b><span>「提供済み」ボタンを押す</span></div><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAAB+UlEQVR4Xu1YQYrDMBDT1IYenR85Pwv9mQv7kTxgwT4WXGbRTNu9bOlp6RzqQxpID4qikWSL4um6Hp4/Az4PX5EA7fxP6kBpqVcAszjfdUakr6oqUNO+Era2PNakyreIiBYiK8oJpZHYsc3SMCS/+irvfJWx8tOX03VB5r2tdwL6c90BlXZZILKhNFdySLT84Ar+pF3SPGesX99AUYyY3J5FBGPLqBgbzQG4isgSEC3UV0eiM7h90SVUNZ6DQXulGxR1m1Vtqpq0zYh+S24dqnZPikrYlhTxuD1giO5y7KBQPdqGzLHOiA5m3FKobRrDTDHeh1WC14PKK822po5pbxFPCRyrSSto5l11suG4dEOi7YRqbsDl9kWqY3JraN0QtJNbX3HRGjYK1bzL7Css2ttY0QeK3icOYdPBQ8FjV3s1PdSoU0Z4FK1y1rwt0BZiJi+njMWAhQHcnRG8trBTBhMATLR0M0+0iD3h1mosyLzYuIlFVYLJlXowkNZ1LYKDpkNNBEwNWEyYeuNy63sHCuBhuT568VoN+60ITw+StmPndvKyILOShdyX0a80md+6d02Q26gOZuWWgK13WR8L3MFuVdyhupX5TUTd/q5ztu2Y7mu2iYt3ssQ4uG3JPR2sipsDB+T2cX7r1ct6gu3UQk6ZfE7y/82pfwBpIrD9+UoeYgAAAABJRU5ErkJggg==" alt="テント調理担当のQRコード" width="150" height="150"><b>テント調理担当</b><span>いま作る数を見る</span></div><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAAB80lEQVR4Xu1YQW7DMAyj5gA7OsAesKc4Pxv2M+cp/YFzLKBAAyW33aXYaYAONQyjTS4sS1GUxfB0nW/P3wGvl3+TcIiILMByCLAv3OAj2fLRBxvNzMqAVrMBGyhmxcxG05R/NmkE3i+bfJqsOGXDQbbzcfugT+u3HqK167220nFLCrmqnR8DY12wae3zaTq0BGTWqYSBpXYbrQyCJ8MZ0e4igmPz/eXmsJ0isiZEC4s1oGiKBjQagq98nnB3sObe1VHpZvEhJ1qAULV2zE2qS15uifMmg27Wy6AeMnLLztVt+kBTKqEpwDOhJ4QVVCsX71/AdcVS7ZrTE1yikRDosZSuhTDyccvWoO5a4WAEHyWW1BM8fREz3Ywg/Sek1C0F4HyyskIATI8kOakSSGztbF4uBq29JOb2zipAVXgky6oEI5Nm9AFvau1hv+n81nUbo413sWgW6iSnROtaBaczN4SwBf+akVvCg+dwj4vOcDTilGhDA7PEKpWApDlhmq03L1ZZzOk+/qTk9jY7sDXQviLu8kypBDI5g8GcKFsZLbFuXausNV7RxCiRMiew7P2uptllA3ZZUQbPrBP6XAt2PTb1NK7AmTGN/75Z6osbr08QzAz5bj9uE3pMjrE9jCWdIsMTvP9GvJmGkLGXyesm/98U/wMHe7FatHruFgAAAABJRU5ErkJggg==" alt="カナル調理担当のQRコード" width="150" height="150"><b>カナル調理担当</b><span>在庫・発注・出た数を見る</span></div><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAACG0lEQVR4Xu1YQYrjMBCsjgRzlH8wT5F+FvKk/YEM+5F9wIB0DMj0Ut3OnGY2pyV9GGGCwYaUytXVpRbFt+u4fP8M+Hn4jATo4DtpYKGmUQGs4nzXFZG+qkp4b2MnbO15tqTKXUREC5GG0nkBa15X6ZiSn32VV25ltgWg3I4Nebazul4J6Mv1AFT6sdVDrijdlfxU8a/YCj+4Ahn1mJLWntF+fwBFMWPqdhcRzPY2KuY1GbGHiGwB0UJ9Dd487IsuoarxHAw6qhtCMrSqXVWT9hXRb4nWmXzUV2V3KD2NkN2h3ESaSEuDJUdDmLLc0F5R9v/8T3pCWjgy7gK8a14duqP8OrYaDy2V4MFgFV0022qZgUUXscqU9UUBsPPWxYTj0g2J1rAlYiaxOENOTTG5ZTs4ATu3vkKivaD0xc67m1Z7du/1qBDOE8xvrZG5XC2Qe6HF9NsuTIkCMmxuMHDfKkkOyy0ZNkOw/kueI3JLrZrfEq0HBuvFtLWIfms5wVk1N+ugodl9QCVY4iKTpNdamx94oyrBQJoJeLI1SQRFOyq55e+ZE85hQlBu/exAjyWlZrmkOmJOuGCKiGTsx0bAGbhvPFQSfMAqM0+wRkY90NCs3EI6GOmzWc2NERfg9AO7bKbekNxaMLCRndHLZBv2XPa5SvfjmP5pDAxhc4I1CGu+PlWgDIL2ssf81meMzAmf9htOt/Izyf9vbvIXDUKWaj0Mcg8AAAAASUVORK5CYII=" alt="出荷担当のQRコード" width="150" height="150"><b>出荷担当</b><span>発注・出荷・調整を入力</span></div></div><p class="note" style="margin:10px 0 0">スタッフの個人のスマホで読み取ってもらいます。レジはこの端末だけで使います。</p></div>';
+    h+='<div class="card"><h2>このレジ端末の送信状況</h2><div class="row"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div></section>';
     return h;
   }
   function orderText(o){return (o.items||[]).map(function(it){return esc(it.name)+'×'+it.qty;}).join('、');}
@@ -597,7 +603,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     var keep=v.scrollTop;
     var a=document.activeElement;
     if(ui.tab==='settings'&&a&&a.tagName==='INPUT'&&v.contains(a)){return;}
-    v.innerHTML=ui.tab==='register'?registerView():ui.tab==='board'?boardView():ui.tab==='sales'?salesView():settingsView();
+    v.innerHTML=ui.tab==='register'?registerView():ui.tab==='board'?boardView():ui.tab==='sales'?salesView():ui.tab==='qr'?qrView():settingsView();
     var tb=document.getElementById('tab-board');if(tb){var mc=makingCount();tb.innerHTML='受け渡し'+(mc?'<span class="tabbadge">'+mc+'</span>':'');}
     v.scrollTop=keep;
     document.querySelectorAll('#tabs button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===ui.tab);});
@@ -839,8 +845,6 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
         h+='<div class="card"><h2>発注の目安（この本数以下で知らせます）</h2><div class="lowbox"><input id="st-low" type="number" inputmode="numeric" min="0" value="'+stockLow(events)+'"><span>本</span></div><p class="note" style="margin:6px 0 0">全端末で共通の設定です。</p></div>';
         var lastOp=0;events.forEach(function(e){if(e.kind!=='cfg'&&e.ts>lastOp)lastOp=e.ts;});
         h+='<div class="card"><h2>担当を交代するとき</h2><p class="note" style="margin:0">記録はすべてサーバーに保存されています。新しい端末で、同じURLを開くだけで続けられます。交代前に、上に「送信待ち」が出ていないことを確認してください（'+(bq.length?'いま送信待ち '+bq.length+'件':'いま送信待ちなし ✓')+'）。'+(lastOp?'最後の操作は '+timeStr(lastOp)+' です。':'')+'</p></div>';
-        h+='<div class="card"><h2>出荷の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('ship').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
-        h+='<div class="card"><h2>調整の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('adjust').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
       }else if(st.tab==='req'){
         h+='<div class="card"><h2>カナルに発注する本数</h2><div class="qbig num">'+st.rq+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="rq" data-v="1">+1</button><button type="button" data-sa="rq" data-v="5">+5</button><button type="button" data-sa="rq" data-v="10">+10</button><button type="button" data-sa="rq" data-v="20">+20</button><button type="button" class="sub" data-sa="rq" data-v="-1">−1</button><button type="button" class="sub" data-sa="rq" data-v="-5">−5</button><button type="button" class="sub" data-sa="rq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
           +'<button type="button" class="btn bigbtn" data-sa="req"'+(st.rq>0?'':' disabled')+'>'+(st.rq>0?st.rq+'本を発注する':'本数を入れてください')+'</button><p class="note" style="margin:8px 0 0">出荷を記録すると、発注は自動で「出荷済み」になります。</p></div>';
@@ -923,11 +927,6 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   function startCook(){
     var nav=document.getElementById('tabs');
     var ctab=IS_CANAL?1:0;
-    function drawTabs(){
-      if(!nav)return;
-      nav.style.gridTemplateColumns='repeat(2,1fr)';
-      nav.innerHTML='<button type="button" data-ctab="0"'+(ctab===0?' aria-current="true"':'')+'>調理状況</button><button type="button" data-ctab="1"'+(ctab===1?' aria-current="true"':'')+'>カナル調理スタッフ用</button>';
-    }
     if(nav)nav.style.display='none';
     var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'理大祭・受け渡し':IS_CANAL?'理大祭・カナル':'理大祭・調理状況';
     if(IS_PICKUP)loadBq();
@@ -948,12 +947,15 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
         var tday=DAYS.some(function(d){return d.key===jstToday();})?jstToday():'',sv={},sn=[];
         list.concat(done).forEach(function(o){(o.items||[]).forEach(function(it){if(sv[it.name]==null){sv[it.name]=0;sn.push(it.name);}});});
         done.forEach(function(o){if(tday&&o.day!==tday)return;(o.items||[]).forEach(function(it){sv[it.name]+=it.qty;});});
-        h+=stockCard(stockCalc(ui.day,list,done,events),ui.day,events);
+        var rqs=events.filter(function(e){return e.day===ui.day&&e.kind==='req';}).sort(function(a,b){return b.ts-a.ts;});
+        h+='<div class="pair">'+stockCard(stockCalc(ui.day,list,done,events),ui.day,events)
+          +'<div class="card"><h2>発注の履歴（'+dayLabel(ui.day)+'・新しい順）</h2>'+(rqs.length?'<ul class="hist">'+rqs.map(function(e){var dn=e.reason==='done';return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+e.qty+'本</b><span class="why" style="color:'+(dn?'var(--good)':'#8a5a00')+';font-weight:700">'+(dn?'出荷済み':'発注中')+'</span></li>';}).join('')+'</ul>':'<div class="empty">まだありません</div>')+'</div></div>';
         h+='<div class="card board-sum" style="background:#e9f3ea;border-color:#9cc9a6"><h2>出た数（提供済みの合計・'+(tday?'本日 '+dayLabel(tday):'全日')+'）</h2>';
         if(!sn.length)h+='<div class="empty">まだありません</div>';
         sn.forEach(function(n){h+='<div class="cook" style="border-bottom-color:#9cc9a6"><span>'+esc(n)+'</span><b class="num" style="color:var(--good)">'+sv[n]+'<small>'+unitFor(n)+'</small></b></div>';});
         h+='</div>';
       }
+      if(IS_CANAL){v.innerHTML=h+'</section>';return;}
       h+='<div class="card board-sum"><h2>いま作る数（作成中の合計）</h2>';
       if(!names.length)h+='<div class="empty">作成中のご注文はありません</div>';
       names.forEach(function(n){h+='<div class="cook"><span>'+esc(n)+'</span><b class="num">'+by[n]+'<small>'+unitFor(n)+'</small></b></div>';});
@@ -964,12 +966,14 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
         h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過</div></div>'+(IS_PICKUP?'<button type="button" class="btn" data-act="pserve" data-id="'+esc(o.id)+'">提供済み</button>':'')+'</div>';
       });
       h+='</div></div>';
+      if(IS_PICKUP){
       h+='<div class="card"><h2>完了（提供済み '+done.length+'件・新しい順）</h2><div style="display:flex;flex-direction:column;gap:8px">';
       if(!done.length)h+='<div class="empty">なし</div>';
       done.forEach(function(o){
         h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">✓ 完了 '+(o.servedAt?timeStr(o.servedAt):'')+'</div></div>'+(IS_PICKUP?'<button type="button" class="btn ghost" data-act="punserve" data-id="'+esc(o.id)+'">作成中に戻す</button>':'')+'</div>';
       });
-      v.innerHTML=h+'</div></div></section>';
+      }
+      v.innerHTML=h+(IS_PICKUP?'</div></div>':'')+'</section>';
     }
     function poll(){
       if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
@@ -987,10 +991,6 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     document.addEventListener('click',function(ev){
       var t=ev.target.closest('[data-act="pserve"],[data-act="punserve"]');if(!t)return;
       act(t.dataset.id,t.dataset.act==='pserve'?'served':'making');
-    });
-    document.addEventListener('click',function(ev){
-      var t=ev.target.closest('[data-ctab]');if(!t)return;
-      ctab=+t.dataset.ctab;drawTabs();draw();window.scrollTo(0,0);var vw=document.getElementById('view');if(vw)vw.scrollTop=0;
     });
     document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});
     draw();poll();setInterval(poll,5000);setInterval(draw,10000);

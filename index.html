@@ -802,8 +802,8 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     var h1=document.querySelector('header h1');if(h1)h1.textContent='理大祭・在庫';
     loadBq();
     var chip=document.getElementById('status');
-    var st={tab:'stock',day:ui.day,qty:0,sign:-1,aq:0,reason:'ロス',mode:'delta',confirm:null};
-    var list=[],done=[],events=[],last=0,lastAct=0;
+    var st={tab:'stock',day:ui.day,qty:0,sign:-1,aq:0,reason:'ロス',mode:'delta',confirm:null,actual:'',noStock:false};
+    var list=[],done=[],events=[],last=0,lastAct=0,local={},gone={};
     function drawNav(){
       nav.style.gridTemplateColumns='repeat(3,1fr)';
       nav.innerHTML=[['stock','在庫'],['ship','出荷を入力'],['adj','調整']].map(function(t){return '<button type="button" data-sa="tab" data-v="'+t[0]+'"'+(st.tab===t[0]?' aria-current="true"':'')+'>'+t[1]+'</button>';}).join('');
@@ -825,6 +825,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       var h='<section><div class="card"><div class="seg" role="group" aria-label="日付">'+DAYS.map(function(d){return '<button type="button" data-sa="day" data-v="'+d.key+'" aria-pressed="'+(st.day===d.key)+'">'+d.label+'</button>';}).join('')+'</div></div>';
       if(bq.length)h+='<div class="card" style="border-color:var(--tomato)"><b>送信待ち '+bq.length+'件</b><div class="note" style="margin:4px 0 0">電波がつながると自動で送られます。</div></div>';
       if(stale&&BOARD_URL)h+='<div class="card" style="border-color:var(--tomato)"><b>通信が途絶えています。</b><div class="note" style="margin:4px 0 0">'+(last?'最後に更新できた時刻：'+new Date(last).toLocaleTimeString('ja-JP')+'。':'まだ読み込めていません。')+'電波の良い場所で、ページを再読み込みしてください。</div></div>';
+      if(st.noStock)h+='<div class="card" style="border-color:var(--bad);background:#fbe3de"><b>Apps Scriptが古いままです。</b><div class="note" style="margin:4px 0 0">出荷と調整が、サーバーに保存されていません。この画面を開き直すと消えます。Apps Scriptを新しい内容に置き換えて、再デプロイしてください。</div></div>';
       h+=stockCard(c,st.day,events);
       if(st.tab==='stock'){
         h+='<div class="card"><h2>発注の目安（この本数以下で知らせます）</h2><div class="lowbox"><input id="st-low" type="number" inputmode="numeric" min="0" value="'+stockLow()+'"><span>本</span></div><p class="note" style="margin:6px 0 0">この端末だけの設定です。</p></div>';
@@ -842,7 +843,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
             +'<div class="qbig num" style="margin-top:10px">'+(st.sign>0?'+':'−')+st.aq+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="aq" data-v="1">+1</button><button type="button" data-sa="aq" data-v="5">+5</button><button type="button" data-sa="aq" data-v="10">+10</button><button type="button" data-sa="aq" data-v="20">+20</button><button type="button" class="sub" data-sa="aq" data-v="-1">−1</button><button type="button" class="sub" data-sa="aq" data-v="-5">−5</button><button type="button" class="sub" data-sa="aq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
             +'<button type="button" class="btn bigbtn" data-sa="adj"'+(st.aq>0?'':' disabled')+'>'+(st.aq>0?st.reason+'：'+(st.sign>0?'+':'−')+st.aq+'本を記録する':'本数を入れてください')+'</button></div>';
         }else{
-          h+='<div class="card"><h2>いま、揚げる前のロールは何本ありますか</h2><div class="lowbox"><input id="st-actual" type="number" inputmode="numeric" min="0" placeholder="数えた本数"><span>本</span></div>'
+          h+='<div class="card"><h2>いま、揚げる前のロールは何本ありますか</h2><div class="lowbox"><input id="st-actual" type="number" inputmode="numeric" min="0" placeholder="数えた本数" value="'+esc(st.actual)+'"><span>本</span></div>'
             +'<p class="note" style="margin:8px 0 0">計算上の在庫は '+c.stock+'本です。入れた本数との差を、自動で調整として記録します。<br>作成中の注文がないときに数えてください。'+(c.making>0?'いまは作成中が '+c.making+'本あります。揚げ待ちの分は引いて入力してください。':'')+'</p>'
             +'<button type="button" class="btn bigbtn" data-sa="actual">この本数にそろえる</button></div>';
         }
@@ -853,7 +854,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     function send(msg){boardPush(msg);}
     function addEvent(kind,qty,reason){
       var e={id:uid(),day:st.day,kind:kind,qty:qty,reason:reason||'',ts:Date.now()};
-      events.push(e);lastAct=Date.now();send({op:'stock',event:e});
+      events.push(e);local[e.id]=e;lastAct=Date.now();send({op:'stock',event:e});
     }
     document.addEventListener('click',function(ev){
       var t=ev.target.closest('[data-sa]');if(!t)return;
@@ -870,21 +871,31 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       else if(a==='actual'){
         var inp=document.getElementById('st-actual'),n=inp?parseInt(inp.value,10):NaN;
         if(!(n>=0)){toast('数えた本数を入れてください');}
-        else{var c=stockCalc(st.day,list,done,events),d=n-c.stock;if(d===0)toast('差はありません');else{addEvent('adjust',d,'数え直し');toast('在庫を '+n+'本にそろえました');}}
+        else{st.actual='';var c=stockCalc(st.day,list,done,events),d=n-c.stock;if(d===0)toast('差はありません');else{addEvent('adjust',d,'数え直し');toast('在庫を '+n+'本にそろえました');}}
       }
       else if(a==='void'){
-        if(st.confirm===t.dataset.id){events=events.filter(function(e){return e.id!==t.dataset.id;});lastAct=Date.now();send({op:'stockvoid',id:t.dataset.id});st.confirm=null;toast('取り消しました');}
+        if(st.confirm===t.dataset.id){events=events.filter(function(e){return e.id!==t.dataset.id;});delete local[t.dataset.id];gone[t.dataset.id]=Date.now();lastAct=Date.now();send({op:'stockvoid',id:t.dataset.id});st.confirm=null;toast('取り消しました');}
         else{st.confirm=t.dataset.id;var cid=st.confirm;setTimeout(function(){if(st.confirm===cid){st.confirm=null;draw(true);}},3000);}
       }
       draw(true);
     });
+    document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='st-actual')st.actual=ev.target.value;});
     document.addEventListener('change',function(ev){
       if(ev.target&&ev.target.id==='st-low'){lsSet('reji-stock-low',Math.max(0,parseInt(ev.target.value,10)||0));toast('目安を保存しました');draw(true);}
     });
     function poll(){
       if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
       fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        list=j.orders||[];done=j.served||[];events=j.stock||[];last=Date.now();draw();
+        list=j.orders||[];done=j.served||[];last=Date.now();
+        if(!Array.isArray(j.stock)){st.noStock=true;}
+        else{
+          st.noStock=false;
+          var ids={},nowT=Date.now();j.stock.forEach(function(e){ids[e.id]=1;});
+          Object.keys(local).forEach(function(id){if(ids[id]||nowT-local[id].ts>180000)delete local[id];});
+          Object.keys(gone).forEach(function(id){if(!ids[id]||nowT-gone[id]>180000)delete gone[id];});
+          events=j.stock.filter(function(e){return !gone[e.id];}).concat(Object.keys(local).map(function(id){return local[id];}));
+        }
+        draw();
       }).catch(function(){draw();});
     }
     document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});

@@ -370,9 +370,11 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     })();
   }
   var lastPull=0;
+  var exp={v:null,at:0};
   function pullBoard(){
     if(!BOARD_URL||IS_COOK||document.hidden||bq.length||!backend)return;
     fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      if(typeof j.expense==='number'&&isFinite(j.expense)){var ch=exp.v!==j.expense;exp.v=j.expense;exp.at=Date.now();if(ch&&ui.tab==='sales'&&!ui.cart&&!ui.done)render();}
       if(bq.length)return;
       var map={};
       (j.orders||[]).forEach(function(o){map[o.id]={status:'making',servedAt:null};});
@@ -507,6 +509,11 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     var h='<section><div class="card"><h2>確認する日</h2>'+dayChips(ui.sumDay,true,'setsum')+'</div>';
     h+='<p class="note" style="margin:0">この画面の数字は、このレジで記録した分です。全体の収支は、会計スプレッドシートの「★売上」や、ライブ用ダッシュボードで確認します。</p>';
     h+='<div class="stat-grid"><div class="stat main"><small>売上</small><div class="v num">'+yen(c.revenue)+'</div></div><div class="stat"><small>会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
+    var all=calcSales('all'),bal=exp.v==null?null:exp.v-all.revenue;
+    h+='<div class="card"><h2>収支（支出 − 売上）</h2>';
+    if(bal==null) h+='<p class="note" style="margin:0">'+(BOARD_URL?'支出合計を取得中です。表示されないときは、電波を確認してください。':'支出合計を取得できません。')+'</p>';
+    else h+='<div class="row" style="justify-content:space-between"><span>支出合計</span><b class="num">'+yen(exp.v)+'</b></div><div class="row" style="justify-content:space-between"><span>売上合計（全日）</span><b class="num">'+yen(all.revenue)+'</b></div><div class="row" style="justify-content:space-between"><span>支出 − 売上</span><b class="num" style="font-size:22px;color:'+(bal>0?'var(--bad)':'var(--good)')+'">'+(bal>0?'':bal<0?'−':'')+yen(Math.abs(bal))+' '+(bal>0?'赤字':bal<0?'黒字':'収支ゼロ')+'</b></div><p class="note" style="margin:6px 0 0">支出は会計ダッシュボードの支出合計です（'+timeStr(exp.at)+' 更新）。</p>';
+    h+='</div>';
     h+='<div class="card"><h2>売上シートへの送信</h2>';
     if(!formReady()) h+='<p class="note" style="margin:0">送信先(Googleフォーム)がまだ設定されていません。</p>';
     else h+='<p class="note" style="margin:0 0 10px">会計を確定すると自動で送信されます。電波が悪いときは「未送信」に残り、つながると自動で再送します。</p><div class="row"><b>未送信 '+outbox.length+'件</b><button type="button" class="btn ghost" data-act="resend"'+(outbox.length?'':' disabled')+'>今すぐ再送</button></div>';

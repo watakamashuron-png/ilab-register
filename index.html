@@ -302,6 +302,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
 .hist .why{flex:1;color:var(--muted);font-size:13px}
 .lowbox{display:flex;align-items:center;gap:8px}
 .lowbox input{width:80px;font:700 18px var(--font);padding:8px;border:1px solid var(--line);border-radius:8px;text-align:center}
+.reqbar{margin:10px auto 0;max-width:420px;text-align:center;background:#fde9b8;border:2px solid #e0a63a;color:#6b4300;border-radius:12px;padding:10px 12px;font-size:1.05rem}.reqbar b{font-size:1.5rem}
 </style>
 </head>
 <body>
@@ -331,7 +332,8 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   var BOARD_URL='https://script.google.com/macros/s/AKfycbwZll-5cY49gg9ejxwBMWserUUjvOYcw1rcZhIsqXOOX7XMYYPN97MpPHr-bsUYvbSqpA/exec';
   /* ================================================================ */
   var IS_PICKUP=/[?&]view=pickup\b/.test(location.search);   /* 受け渡し担当の端末（提供済みを押す） */
-  var IS_COOK=IS_PICKUP||/[?&]view=cook\b/.test(location.search);
+  var IS_CANAL=/[?&]view=canal\b/.test(location.search);   /* カナル調理担当の閲覧画面 */
+  var IS_COOK=IS_PICKUP||IS_CANAL||/[?&]view=cook\b/.test(location.search);
   var IS_STOCK=/[?&]view=stock\b/.test(location.search);   /* 在庫管理（出荷・調整の入力）*/
   var STOCK_ITEM='ソーセージロール';   /* 在庫を数える商品名 */
   var DAYS=[{key:'2026-11-20',label:'11/20(金)'},{key:'2026-11-21',label:'11/21(土)'}];
@@ -784,16 +786,20 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     (served||[]).forEach(function(o){if(o.day===day){var c=cnt(o);ordered+=c;sv+=c;}});
     return {ship:ship,adj:adj,ordered:ordered,served:sv,making:ordered-sv,stock:ship+adj-ordered};
   }
-  function stockLow(){return Math.max(0,parseInt(lsGet('reji-stock-low','15'),10)||0);}
+  function stockLow(events){var b=null;(events||[]).forEach(function(e){if(e.kind==='cfg'&&(!b||e.ts>b.ts))b=e;});return b?Math.max(0,b.qty):15;}
+  function reqBar(events,day){
+    var n=0,t=0;(events||[]).forEach(function(e){if(e.day===day&&e.kind==='req'&&e.reason!=='done'){n+=e.qty;if(!t||e.ts<t)t=e.ts;}});
+    return n?'<div class="reqbar">発注中 <b class="num">'+n+'本</b>（'+Math.max(0,Math.floor((Date.now()-t)/60000))+'分前に発注）</div>':'';
+  }
   function stockCard(c,day,events){
-    var low=stockLow(),cl,tx;
+    var low=stockLow(events),cl,tx;
     if(c.stock<0){cl='bad';tx='売りすぎです（在庫が足りません）';}
     else if(c.stock<=low){cl='warn';tx='発注の目安です（残り'+low+'本以下）';}
     else{cl='ok';tx='足りています';}
     var last=0;(events||[]).forEach(function(e){if(e.day===day&&e.kind==='ship'&&e.ts>last)last=e.ts;});
     var ago=last?'最後の出荷 '+Math.max(0,Math.floor((Date.now()-last)/60000))+'分前（'+timeStr(last)+'）':'この日の出荷はまだありません';
     var adjS=(c.adj>0?'+':c.adj<0?'−':'')+Math.abs(c.adj);
-    return '<div class="card stockcard '+cl+'"><h2>テント在庫（'+dayLabel(day)+'・'+esc(STOCK_ITEM)+'）</h2><div class="stock-big"><b class="num">'+c.stock+'</b><small>本</small></div><div class="stock-st">'+tx+'</div>'
+    return '<div class="card stockcard '+cl+'"><h2>テント在庫（'+dayLabel(day)+'・'+esc(STOCK_ITEM)+'）</h2><div class="stock-big"><b class="num">'+c.stock+'</b><small>本</small></div><div class="stock-st">'+tx+'</div>'+reqBar(events,day)
       +'<div class="stock-row"><div><small>出荷</small><b class="num">'+c.ship+'</b></div><div><small>調整</small><b class="num">'+adjS+'</b></div><div><small>注文</small><b class="num">'+c.ordered+'</b></div><div><small>提供済み</small><b class="num">'+c.served+'</b></div><div><small>作成中</small><b class="num">'+c.making+'</b></div></div>'
       +'<p class="note" style="margin:8px 0 0;text-align:center">在庫 ＝ 出荷 ＋ 調整 − 注文　／　'+ago+'</p></div>';
   }
@@ -802,18 +808,20 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     var h1=document.querySelector('header h1');if(h1)h1.textContent='理大祭・在庫';
     loadBq();
     var chip=document.getElementById('status');
-    var st={tab:'stock',day:ui.day,qty:0,sign:-1,aq:0,reason:'ロス',mode:'delta',confirm:null,actual:'',noStock:false};
-    var list=[],done=[],events=[],last=0,lastAct=0,local={},gone={};
+    var st={tab:'stock',day:ui.day,rq:0,qty:0,sign:-1,aq:0,reason:'ロス',mode:'delta',confirm:null,actual:'',noStock:false};
+    var list=[],done=[],events=[],last=0,lastAct=0,local={},gone={},doneL={};
     function drawNav(){
-      nav.style.gridTemplateColumns='repeat(3,1fr)';
-      nav.innerHTML=[['stock','在庫'],['ship','出荷を入力'],['adj','調整']].map(function(t){return '<button type="button" data-sa="tab" data-v="'+t[0]+'"'+(st.tab===t[0]?' aria-current="true"':'')+'>'+t[1]+'</button>';}).join('');
+      nav.style.gridTemplateColumns='repeat(4,1fr)';
+      nav.innerHTML=[['stock','在庫'],['req','発注'],['ship','出荷'],['adj','調整']].map(function(t){return '<button type="button" data-sa="tab" data-v="'+t[0]+'"'+(st.tab===t[0]?' aria-current="true"':'')+'>'+t[1]+'</button>';}).join('');
     }
     function evs(kind){return events.filter(function(e){return e.day===st.day&&e.kind===kind;}).sort(function(a,b){return b.ts-a.ts;});}
     function hist(kind){
       var a=evs(kind);if(!a.length)return '<div class="empty">まだありません</div>';
       return '<ul class="hist">'+a.map(function(e){
-        var q=kind==='ship'?e.qty+'本':(e.qty>0?'+':'−')+Math.abs(e.qty)+'本';
-        return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+esc(e.reason||'')+'</span><button type="button" class="btn danger" data-sa="void" data-id="'+esc(e.id)+'">'+(st.confirm===e.id?'もう一度押すと取消':'取消')+'</button></li>';
+        var q=(kind==='ship'||kind==='req')?e.qty+'本':(e.qty>0?'+':'−')+Math.abs(e.qty)+'本';
+        var why=kind==='req'?(e.reason==='done'?'出荷済み':'発注中'):(e.reason||'');
+        if(kind==='req'&&e.reason==='done')return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+why+'</span></li>';
+        return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+esc(why)+'</span><button type="button" class="btn danger" data-sa="void" data-id="'+esc(e.id)+'">'+(st.confirm===e.id?'もう一度押すと取消':'取消')+'</button></li>';
       }).join('')+'</ul>';
     }
     function draw(force){
@@ -828,9 +836,15 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       if(st.noStock)h+='<div class="card" style="border-color:var(--bad);background:#fbe3de"><b>Apps Scriptが古いままです。</b><div class="note" style="margin:4px 0 0">出荷と調整が、サーバーに保存されていません。この画面を開き直すと消えます。Apps Scriptを新しい内容に置き換えて、再デプロイしてください。</div></div>';
       h+=stockCard(c,st.day,events);
       if(st.tab==='stock'){
-        h+='<div class="card"><h2>発注の目安（この本数以下で知らせます）</h2><div class="lowbox"><input id="st-low" type="number" inputmode="numeric" min="0" value="'+stockLow()+'"><span>本</span></div><p class="note" style="margin:6px 0 0">この端末だけの設定です。</p></div>';
+        h+='<div class="card"><h2>発注の目安（この本数以下で知らせます）</h2><div class="lowbox"><input id="st-low" type="number" inputmode="numeric" min="0" value="'+stockLow(events)+'"><span>本</span></div><p class="note" style="margin:6px 0 0">全端末で共通の設定です。</p></div>';
+        var lastOp=0;events.forEach(function(e){if(e.kind!=='cfg'&&e.ts>lastOp)lastOp=e.ts;});
+        h+='<div class="card"><h2>担当を交代するとき</h2><p class="note" style="margin:0">記録はすべてサーバーに保存されています。新しい端末で、同じURLを開くだけで続けられます。交代前に、上に「送信待ち」が出ていないことを確認してください（'+(bq.length?'いま送信待ち '+bq.length+'件':'いま送信待ちなし ✓')+'）。'+(lastOp?'最後の操作は '+timeStr(lastOp)+' です。':'')+'</p></div>';
         h+='<div class="card"><h2>出荷の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('ship').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
         h+='<div class="card"><h2>調整の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('adjust').replace(/<button[^>]*data-sa="void"[^>]*>.*?<\/button>/g,'')+'</div>';
+      }else if(st.tab==='req'){
+        h+='<div class="card"><h2>カナルに発注する本数</h2><div class="qbig num">'+st.rq+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="rq" data-v="1">+1</button><button type="button" data-sa="rq" data-v="5">+5</button><button type="button" data-sa="rq" data-v="10">+10</button><button type="button" data-sa="rq" data-v="20">+20</button><button type="button" class="sub" data-sa="rq" data-v="-1">−1</button><button type="button" class="sub" data-sa="rq" data-v="-5">−5</button><button type="button" class="sub" data-sa="rq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
+          +'<button type="button" class="btn bigbtn" data-sa="req"'+(st.rq>0?'':' disabled')+'>'+(st.rq>0?st.rq+'本を発注する':'本数を入れてください')+'</button><p class="note" style="margin:8px 0 0">出荷を記録すると、発注は自動で「出荷済み」になります。</p></div>';
+        h+='<div class="card"><h2>発注の記録（'+dayLabel(st.day)+'・新しい順）</h2>'+hist('req')+'</div>';
       }else if(st.tab==='ship'){
         h+='<div class="card"><h2>いま運び出す本数</h2><div class="qbig num">'+st.qty+'<small style="font-size:.3em"> 本</small></div><div class="qbtns"><button type="button" data-sa="sq" data-v="1">+1</button><button type="button" data-sa="sq" data-v="5">+5</button><button type="button" data-sa="sq" data-v="10">+10</button><button type="button" data-sa="sq" data-v="20">+20</button><button type="button" class="sub" data-sa="sq" data-v="-1">−1</button><button type="button" class="sub" data-sa="sq" data-v="-5">−5</button><button type="button" class="sub" data-sa="sq" data-v="0" style="grid-column:span 2">0に戻す</button></div>'
           +'<button type="button" class="btn bigbtn" data-sa="ship"'+(st.qty>0?'':' disabled')+'>'+(st.qty>0?st.qty+'本の出荷を記録する':'本数を入れてください')+'</button></div>';
@@ -852,8 +866,8 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       v.innerHTML=h+'</section>';
     }
     function send(msg){boardPush(msg);}
-    function addEvent(kind,qty,reason){
-      var e={id:uid(),day:st.day,kind:kind,qty:qty,reason:reason||'',ts:Date.now()};
+    function addEvent(kind,qty,reason,day){
+      var e={id:uid(),day:day||st.day,kind:kind,qty:qty,reason:reason||'',ts:Date.now()};
       events.push(e);local[e.id]=e;lastAct=Date.now();send({op:'stock',event:e});
     }
     document.addEventListener('click',function(ev){
@@ -861,12 +875,14 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
       var a=t.dataset.sa,v=t.dataset.v;
       if(a==='tab'){st.tab=v;st.confirm=null;drawNav();var m=document.getElementById('view');if(m)m.scrollTop=0;}
       else if(a==='day'){st.day=v;st.confirm=null;}
+      else if(a==='rq'){st.rq=v==='0'?0:Math.max(0,st.rq+parseInt(v,10));}
+      else if(a==='req'){if(st.rq>0){addEvent('req',st.rq,'');toast(st.rq+'本を発注しました');st.rq=0;}}
       else if(a==='sq'){st.qty=v==='0'?0:Math.max(0,st.qty+parseInt(v,10));}
       else if(a==='aq'){st.aq=v==='0'?0:Math.max(0,st.aq+parseInt(v,10));}
       else if(a==='sign'){st.sign=parseInt(v,10);}
       else if(a==='reason'){st.reason=v;st.sign=v==='ロス'?-1:v==='持越し'?1:st.sign;}
       else if(a==='mode'){st.mode=v;}
-      else if(a==='ship'){if(st.qty>0){addEvent('ship',st.qty,'');toast(st.qty+'本の出荷を記録しました');st.qty=0;}}
+      else if(a==='ship'){if(st.qty>0){addEvent('ship',st.qty,'');events.forEach(function(e){if(e.day===st.day&&e.kind==='req'&&e.reason!=='done'){e.reason='done';doneL[e.id]=Date.now();send({op:'stockdone',id:e.id});}});toast(st.qty+'本の出荷を記録しました');st.qty=0;}}
       else if(a==='adj'){if(st.aq>0){addEvent('adjust',st.sign*st.aq,st.reason);toast('調整を記録しました');st.aq=0;}}
       else if(a==='actual'){
         var inp=document.getElementById('st-actual'),n=inp?parseInt(inp.value,10):NaN;
@@ -881,7 +897,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     });
     document.addEventListener('input',function(ev){if(ev.target&&ev.target.id==='st-actual')st.actual=ev.target.value;});
     document.addEventListener('change',function(ev){
-      if(ev.target&&ev.target.id==='st-low'){lsSet('reji-stock-low',Math.max(0,parseInt(ev.target.value,10)||0));toast('目安を保存しました');draw(true);}
+      if(ev.target&&ev.target.id==='st-low'){addEvent('cfg',Math.max(0,parseInt(ev.target.value,10)||0),'','*');toast('目安を保存しました（全端末共通）');setTimeout(function(){draw(true);},0);}
     });
     function poll(){
       if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
@@ -894,6 +910,7 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
           Object.keys(local).forEach(function(id){if(ids[id]||nowT-local[id].ts>180000)delete local[id];});
           Object.keys(gone).forEach(function(id){if(!ids[id]||nowT-gone[id]>180000)delete gone[id];});
           events=j.stock.filter(function(e){return !gone[e.id];}).concat(Object.keys(local).map(function(id){return local[id];}));
+          events.forEach(function(e){if(doneL[e.id]){if(e.reason==='done'||nowT-doneL[e.id]>180000)delete doneL[e.id];else e.reason='done';}});
         }
         draw();
       }).catch(function(){draw();});
@@ -905,14 +922,14 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
   /* ---------- 調理担当の閲覧画面（?view=cook） ---------- */
   function startCook(){
     var nav=document.getElementById('tabs');
-    var ctab=0;
+    var ctab=IS_CANAL?1:0;
     function drawTabs(){
       if(!nav)return;
       nav.style.gridTemplateColumns='repeat(2,1fr)';
       nav.innerHTML='<button type="button" data-ctab="0"'+(ctab===0?' aria-current="true"':'')+'>調理状況</button><button type="button" data-ctab="1"'+(ctab===1?' aria-current="true"':'')+'>カナル調理スタッフ用</button>';
     }
-    if(nav){if(IS_PICKUP)nav.style.display='none';else drawTabs();}
-    var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'理大祭・受け渡し':'理大祭・調理状況';
+    if(nav)nav.style.display='none';
+    var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'理大祭・受け渡し':IS_CANAL?'理大祭・カナル':'理大祭・調理状況';
     if(IS_PICKUP)loadBq();
     var lastAct=0;
     var chip=document.getElementById('status');

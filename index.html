@@ -262,7 +262,8 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   /* 受け渡し同期（Apps Scriptのウェブアプリ URL。空のままなら同期しない） */
   var BOARD_URL='https://script.google.com/macros/s/AKfycbwZll-5cY49gg9ejxwBMWserUUjvOYcw1rcZhIsqXOOX7XMYYPN97MpPHr-bsUYvbSqpA/exec';
   /* ================================================================ */
-  var IS_COOK=/[?&]view=cook\b/.test(location.search);
+  var IS_PICKUP=/[?&]view=pickup\b/.test(location.search);   /* 受け渡し担当の端末（提供済みを押す） */
+  var IS_COOK=IS_PICKUP||/[?&]view=cook\b/.test(location.search);
   var DAYS=[{key:'2026-11-20',label:'11/20(金)'},{key:'2026-11-21',label:'11/21(土)'}];
   var state={products:[],orders:[]};
   var ui={tab:'register',day:null,sumDay:'all',report:'',cart:null,done:null};
@@ -335,6 +336,20 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
         .then(function(){bq.shift();saveBq();next();})
         .catch(function(){bSending=false;});
     })();
+  }
+  var lastPull=0;
+  function pullBoard(){
+    if(!BOARD_URL||IS_COOK||document.hidden||bq.length||!backend)return;
+    fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      if(bq.length)return;
+      var map={};
+      (j.orders||[]).forEach(function(o){map[o.id]={status:'making',servedAt:null};});
+      (j.served||[]).forEach(function(o){map[o.id]={status:'served',servedAt:o.servedAt||Date.now()};});
+      state.orders.forEach(function(lo){
+        var m=map[lo.id];
+        if(m&&(lo.status||'served')!==m.status){backend.set('orders',lo.id,Object.assign({},lo,{status:m.status,servedAt:m.servedAt}));}
+      });
+    }).catch(function(){});
   }
   function guard(p){return Promise.resolve(p).catch(function(){toast('保存できませんでした');});}
 
@@ -427,7 +442,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   function boardView(){
     var list=state.orders.filter(function(o){return o.day===ui.day;});
     var making=list.filter(isMaking).sort(function(a,b){return a.ts-b.ts;});
-    var served=list.filter(function(o){return !isMaking(o);}).sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);}).slice(0,8);
+    var served=list.filter(function(o){return !isMaking(o);}).sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);});
     var by={},names=[];
     making.forEach(function(o){(o.items||[]).forEach(function(it){if(!by[it.name]){by[it.name]=0;names.push(it.name);}by[it.name]+=it.qty;});});
     var h='<section><div class="card"><h2>販売日</h2>'+dayChips(ui.day,false,'setday')+'</div>';
@@ -442,7 +457,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
       h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過'+(m>=10?'（お待たせしています）':'')+'</div></div><button type="button" class="btn" data-act="serve" data-id="'+esc(o.id)+'">提供済み</button></div>';
     });
     h+='</div></div>';
-    h+='<div class="card"><h2>提供済み（直近8件）</h2><div style="display:flex;flex-direction:column;gap:8px">';
+    h+='<div class="card"><h2>提供済み '+served.length+'件（新しい順）</h2><div style="display:flex;flex-direction:column;gap:8px">';
     if(!served.length) h+='<div class="empty">なし</div>';
     served.forEach(function(o){
       h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">提供済み'+(o.servedAt?' '+timeStr(o.servedAt):'')+'</div></div><button type="button" class="btn ghost" data-act="unserve" data-id="'+esc(o.id)+'">作成中に戻す</button></div>';
@@ -675,12 +690,15 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   });
   window.addEventListener('online',function(){flush();flushBoard();});
   setInterval(function(){flush();flushBoard();},20000);
+  setInterval(pullBoard,5000);
   setInterval(function(){if(ui.tab==='board'&&!ui.cart&&!ui.done)render();},30000);
 
   /* ---------- 調理担当の閲覧画面（?view=cook） ---------- */
   function startCook(){
     var nav=document.getElementById('tabs');if(nav)nav.style.display='none';
-    var h1=document.querySelector('header h1');if(h1)h1.textContent='調理 受け渡し状況';
+    var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'受け渡し':'調理 受け渡し状況';
+    if(IS_PICKUP)loadBq();
+    var lastAct=0;
     var chip=document.getElementById('status');
     var list=[],done=[],last=0,failed=false;
     function draw(){
@@ -690,6 +708,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
       var by={},names=[];
       list.forEach(function(o){(o.items||[]).forEach(function(it){if(!by[it.name]){by[it.name]=0;names.push(it.name);}by[it.name]+=it.qty;});});
       var h='<section>';
+      if(IS_PICKUP&&bq.length)h+='<div class="card" style="border-color:var(--tomato)"><b>送信待ち '+bq.length+'件</b><div class="note" style="margin:4px 0 0">電波がつながると自動で送られます。</div></div>';
       if(!BOARD_URL)h+='<div class="card"><b>同期先が設定されていません。</b></div>';
       else if(stale)h+='<div class="card" style="border-color:var(--tomato)"><b>通信が途絶えています。</b><div class="note" style="margin:4px 0 0">'+(last?'最後に更新できた時刻：'+new Date(last).toLocaleTimeString('ja-JP')+'。':'まだ読み込めていません。')+'電波の良い場所に移動するか、ページを再読み込みしてください。表示は古い可能性があります。</div></div>';
       h+='<div class="card board-sum"><h2>いま作る数（作成中の合計）</h2>';
@@ -699,22 +718,33 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
       if(!list.length)h+='<div class="empty">なし</div>';
       list.forEach(function(o){
         var m=Math.max(0,Math.floor((now-o.ts)/60000));
-        h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過</div></div></div>';
+        h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過</div></div>'+(IS_PICKUP?'<button type="button" class="btn" data-act="pserve" data-id="'+esc(o.id)+'">提供済み</button>':'')+'</div>';
       });
       h+='</div></div>';
-      h+='<div class="card"><h2>完了（提供済み・直近30分）</h2><div style="display:flex;flex-direction:column;gap:8px">';
+      h+='<div class="card"><h2>完了（提供済み '+done.length+'件・新しい順）</h2><div style="display:flex;flex-direction:column;gap:8px">';
       if(!done.length)h+='<div class="empty">なし</div>';
       done.forEach(function(o){
-        h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">✓ 完了 '+(o.servedAt?timeStr(o.servedAt):'')+'</div></div></div>';
+        h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">✓ 完了 '+(o.servedAt?timeStr(o.servedAt):'')+'</div></div>'+(IS_PICKUP?'<button type="button" class="btn ghost" data-act="punserve" data-id="'+esc(o.id)+'">作成中に戻す</button>':'')+'</div>';
       });
       v.innerHTML=h+'</div></div></section>';
     }
     function poll(){
-      if(!BOARD_URL||document.hidden)return;
+      if(!BOARD_URL||document.hidden||bq.length||Date.now()-lastAct<6000)return;
       fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});done=j.served||[];last=Date.now();failed=false;draw();
+        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});done=(j.served||[]).slice().sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);});last=Date.now();failed=false;draw();
       }).catch(function(){failed=true;draw();});
     }
+    function act(id,st){
+      var o=list.concat(done).filter(function(x){return x.id===id;})[0];if(!o)return;
+      var no=Object.assign({},o,{status:st,servedAt:st==='served'?Date.now():null});
+      list=list.filter(function(x){return x.id!==id;});done=done.filter(function(x){return x.id!==id;});
+      if(st==='served'){done.unshift(no);}else{list.push(no);list.sort(function(a,b){return a.ts-b.ts;});}
+      lastAct=Date.now();draw();boardPush({op:'upsert',order:no});
+    }
+    document.addEventListener('click',function(ev){
+      var t=ev.target.closest('[data-act="pserve"],[data-act="punserve"]');if(!t)return;
+      act(t.dataset.id,t.dataset.act==='pserve'?'served':'making');
+    });
     document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});
     draw();poll();setInterval(poll,5000);setInterval(draw,10000);
   }

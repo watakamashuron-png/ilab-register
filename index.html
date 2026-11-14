@@ -229,6 +229,11 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
 .tk .info .sub{color:var(--muted);font-size:12px}
 .tk .btn{min-height:56px;padding:10px 14px;white-space:nowrap}
 .tk.served .btn{min-height:44px}
+.qrs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.qr{text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 6px}
+.qr img{width:100%;max-width:170px;height:auto;image-rendering:pixelated;display:block;margin:0 auto 6px}
+.qr b{display:block;font:700 15px var(--font)}
+.qr span{display:block;font-size:12px;color:var(--muted)}
 .tabbadge{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--tomato);color:#fff;font:900 12px/20px var(--font);margin-left:4px;vertical-align:1px}
 .toast{bottom:auto;top:calc(52px + env(safe-area-inset-top));width:max-content;max-width:92%;text-align:center;background:var(--ink);color:#fff8e6;box-shadow:0 3px 0 rgba(0,0,0,.2)}
 @media (min-width:700px){.awning{height:calc(24px + env(safe-area-inset-top))}header h1{font-size:24px}}
@@ -454,20 +459,19 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     if(!making.length) h+='<div class="empty">なし</div>';
     making.forEach(function(o){
       var m=Math.max(0,Math.floor((Date.now()-o.ts)/60000));
-      h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過'+(m>=10?'（お待たせしています）':'')+'</div></div><button type="button" class="btn" data-act="serve" data-id="'+esc(o.id)+'">提供済み</button></div>';
+      h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過'+(m>=10?'（お待たせしています）':'')+'</div></div>'+(BOARD_URL?'':'<button type="button" class="btn" data-act="serve" data-id="'+esc(o.id)+'">提供済み</button>')+'</div>';
     });
     h+='</div></div>';
     h+='<div class="card"><h2>提供済み '+served.length+'件（新しい順）</h2><div style="display:flex;flex-direction:column;gap:8px">';
     if(!served.length) h+='<div class="empty">なし</div>';
     served.forEach(function(o){
-      h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">提供済み'+(o.servedAt?' '+timeStr(o.servedAt):'')+'</div></div><button type="button" class="btn ghost" data-act="unserve" data-id="'+esc(o.id)+'">作成中に戻す</button></div>';
+      h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">提供済み'+(o.servedAt?' '+timeStr(o.servedAt):'')+'</div></div>'+(BOARD_URL?'':'<button type="button" class="btn ghost" data-act="unserve" data-id="'+esc(o.id)+'">作成中に戻す</button>')+'</div>';
     });
     h+='</div></div>';
     if(BOARD_URL){
-      var cookUrl=location.href.split('#')[0].split('?')[0]+'?view=cook';
-      h+='<div class="card"><h2>調理担当のスマホ用</h2><p class="note" style="margin:0 0 8px">このURLを開くと、作成中の注文と合計本数が見られます（見るだけ・数秒おきに自動更新）。</p><textarea readonly rows="2" style="width:100%;font:13px var(--font);border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff">'+esc(cookUrl)+'</textarea><div class="row" style="margin-top:8px"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div>';
+      h+='<div class="card"><h2>調理・受け渡し担当用のQRコード</h2><div class="qrs"><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAAB+UlEQVR4Xu1YQYrDMBDT1IYenR85Pwv9mQv7kTxgwT4WXGbRTNu9bOlp6RzqQxpID4qikWSL4um6Hp4/Az4PX5EA7fxP6kBpqVcAszjfdUakr6oqUNO+Era2PNakyreIiBYiK8oJpZHYsc3SMCS/+irvfJWx8tOX03VB5r2tdwL6c90BlXZZILKhNFdySLT84Ar+pF3SPGesX99AUYyY3J5FBGPLqBgbzQG4isgSEC3UV0eiM7h90SVUNZ6DQXulGxR1m1Vtqpq0zYh+S24dqnZPikrYlhTxuD1giO5y7KBQPdqGzLHOiA5m3FKobRrDTDHeh1WC14PKK822po5pbxFPCRyrSSto5l11suG4dEOi7YRqbsDl9kWqY3JraN0QtJNbX3HRGjYK1bzL7Css2ttY0QeK3icOYdPBQ8FjV3s1PdSoU0Z4FK1y1rwt0BZiJi+njMWAhQHcnRG8trBTBhMATLR0M0+0iD3h1mosyLzYuIlFVYLJlXowkNZ1LYKDpkNNBEwNWEyYeuNy63sHCuBhuT568VoN+60ITw+StmPndvKyILOShdyX0a80md+6d02Q26gOZuWWgK13WR8L3MFuVdyhupX5TUTd/q5ztu2Y7mu2iYt3ssQ4uG3JPR2sipsDB+T2cX7r1ct6gu3UQk6ZfE7y/82pfwBpIrD9+UoeYgAAAABJRU5ErkJggg==" alt="調理担当用QRコード" width="150" height="150"><b>調理担当</b><span>作成中の本数を見るだけ</span></div><div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2AQAAAADNaUdlAAACcUlEQVR4Xu1ZW47jIBAsBkvzSaQ9QI5CrjY3w0fZG+DPSESMqhqyP7vx/OzYLQ2yIsfIAZquR5PQ8ao93l52Az/9r9tefNArfyD23oAGxJpjzb1m/Wxue+8f3Y9ec+89drZY0RLv7bPX88+f8Qvhhu0G4H7JyxbadlsAbIGfR8f3y+Ov4bLGurbUF6x/cvLL7/+jfeP73IK8APdrib+5HWzfOP5f2974M/8F2yggxJobeO8k/9cQwlj7NoDwXvEIIVzOH/8FSQq24XEBrvXxq+o+m66dXr+YP+L/woUkUqgue9gd8L9m3pCRSgN6L1SCii4V8DD/3lKR5jLgFvkm8fWgv2/SqdyAJZW23Vr6ACWAS6C12OOvo/uZ/0weLSEqebgdvfjyP83Aq2m3JOZPxIGD/BfbyLmVloqQSyDrcuHfmDn3a38Xcy7AgrykIvx6yP/OsAPaAuT51STg/PEX4YvtB3KVS1IB6cLR/LI3vumvai4rwax+0RMP+c9QQ1RjzCPaH1rmwX9SpMwCaSEDCJAi+/A/yp/JolPIBgR85D9znuRD/pEFMv/jgv/JPM8Dk6G5E8I+9Ff8Sbcvz2CFWOQTUdAefx3dP8Gr+vfp/7UWebmj57c3/qjfzfPTfwrC3APuhY/4m9UfQLBCkuWYk/qLPF+s8jL/P89htIS9/Tu6fzifobkCslBMRfBR/87zZ9bvxCy3wI6zvOS/nTyPM5NK5Fo578O/Tf85Tv5VfFnx6yP/x/wJhGHbDNGSMwf4fcZfth8qgWUkqAUu5j//f7GDOBkJ8g8vD/MfhieqEFblxXuzQKeff/j5//Rl+9/6/AmVsx5P81+o6AAAAABJRU5ErkJggg==" alt="受け渡し担当用QRコード" width="150" height="150"><b>受け渡し担当</b><span>「提供済み」を押す</span></div></div><div class="row" style="margin-top:10px"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div>';
     }
-    h+='<p class="note" style="margin:0">会計を確定すると「作成中」に入ります。お客様に渡したら「提供済み」を押してください。この画面は売上の集計には影響しません。</p></section>';
+    h+='<p class="note" style="margin:0">'+(BOARD_URL?'この画面は表示だけです。会計を確定すると「作成中」に入り、受け渡し担当の端末で「提供済み」を押すと「提供済み」に移ります。':'会計を確定すると「作成中」に入ります。お客様に渡したら「提供済み」を押してください。')+'売上の集計には影響しません。</p></section>';
     return h;
   }
   function orderText(o){return (o.items||[]).map(function(it){return esc(it.name)+'×'+it.qty;}).join('、');}

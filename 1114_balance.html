@@ -233,14 +233,14 @@ caption{text-align:left;font-weight:700;padding:4px 0}
   <div class="sim-grid">
     <div class="sim-in" id="simRoll">
       <div class="si-h"><span class="sw" style="background:var(--seg1)"></span>ソーセージロール<span class="si-p">1個 350円</span></div>
-      <div class="si-row"><button type="button" data-k="r" data-d="-10" aria-label="ロールを10個減らす">−</button><input type="number" id="inR" inputmode="numeric" min="0" max="500" step="1" value="300" aria-label="ソーセージロールの販売数"><span class="un">個</span><button type="button" data-k="r" data-d="10" aria-label="ロールを10個増やす">＋</button></div>
-      <input type="range" id="rgR" min="0" max="500" step="5" value="300" aria-label="ソーセージロールの販売数（スライダー）">
+      <div class="si-row"><button type="button" data-k="r" data-d="-10" aria-label="ロールを10個減らす">−</button><input type="number" id="inR" inputmode="numeric" min="0" max="600" step="1" value="300" aria-label="ソーセージロールの販売数"><span class="un">個</span><button type="button" data-k="r" data-d="10" aria-label="ロールを10個増やす">＋</button></div>
+      <input type="range" id="rgR" min="0" max="600" step="5" value="300" aria-label="ソーセージロールの販売数（スライダー）">
       <div class="si-sub" id="subR"></div>
     </div>
     <div class="sim-in" id="simTea">
       <div class="si-h"><span class="sw" style="background:var(--seg2)"></span>アップルティー<span class="si-p">1杯 150円</span></div>
-      <div class="si-row"><button type="button" data-k="t" data-d="-10" aria-label="ティーを10杯減らす">−</button><input type="number" id="inT" inputmode="numeric" min="0" max="500" step="1" value="300" aria-label="アップルティーの販売数"><span class="un">杯</span><button type="button" data-k="t" data-d="10" aria-label="ティーを10杯増やす">＋</button></div>
-      <input type="range" id="rgT" min="0" max="500" step="5" value="300" aria-label="アップルティーの販売数（スライダー）">
+      <div class="si-row"><button type="button" data-k="t" data-d="-10" aria-label="ティーを10杯減らす">−</button><input type="number" id="inT" inputmode="numeric" min="0" max="600" step="1" value="300" aria-label="アップルティーの販売数"><span class="un">杯</span><button type="button" data-k="t" data-d="10" aria-label="ティーを10杯増やす">＋</button></div>
+      <input type="range" id="rgT" min="0" max="600" step="5" value="300" aria-label="アップルティーの販売数（スライダー）">
       <div class="si-sub" id="subT"></div>
     </div>
   </div>
@@ -573,7 +573,7 @@ function drawTables(){
 
 
 /* ===== 個別シミュレーター ===== */
-var sR=300, sT=300, SMAX=500;
+var sR=300, sT=300, SMAX=600;
 function clampS(v){v=Math.round(+v);if(isNaN(v)){v=0;}return Math.max(0,Math.min(SMAX,v));}
 function simProfit(r,t){return PR*r+PT*t+COLLECT-EXP+(refund?REFUND:0);}
 function simT(){return EXP-COLLECT-(refund?REFUND:0);}   /* 収支ゼロになる売上額 */
@@ -615,14 +615,14 @@ function drawSim(){
   svg.appendChild(el('path',{d:'M'+x(0)+' '+y(0)+' L'+x(SMAX)+' '+y(0)+' L'+x(SMAX)+' '+y(r1)+' L'+x(0)+' '+y(r0)+' Z','class':'zone-b'}));
   svg.appendChild(el('path',{d:'M'+x(0)+' '+y(r0)+' L'+x(SMAX)+' '+y(r1)+' L'+x(SMAX)+' '+y(SMAX)+' L'+x(0)+' '+y(SMAX)+' Z','class':'zone-g'}));
   /* 目盛り */
-  [0,100,200,300,400,500].forEach(function(v){
+  [0,100,200,300,400,500,600].forEach(function(v){
     svg.appendChild(el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),'class':v===0?'axisl':'gridl'}));
     svg.appendChild(el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','class':'t-mut'},String(v)));
     svg.appendChild(el('text',{x:x(v),y:H-m.b+18,'text-anchor':'middle','class':'t-mut'},String(v)));
   });
   svg.appendChild(el('text',{x:m.l,y:m.t-9,'text-anchor':'start','class':'t-mut'},'ロール（個）'));
   svg.appendChild(el('text',{x:m.l+pw/2,y:H-8,'text-anchor':'middle','class':'t-sec'},'アップルティー（杯・2日間の合計）'));
-  svg.appendChild(el('text',{x:W-m.r-8,y:m.t+18,'text-anchor':'end','class':'t-sec'},'✓ 黒字ゾーン'));
+  if(!(x(sT)>W-m.r-150&&y(sR)<m.t+50)){svg.appendChild(el('text',{x:W-m.r-8,y:m.t+18,'text-anchor':'end','class':'t-sec'},'✓ 黒字ゾーン'));}
   svg.appendChild(el('text',{x:m.l+8,y:y(0)-8,'class':'t-sec'},'! 赤字ゾーン'));
   /* 収支ゼロの線 */
   svg.appendChild(el('path',{d:'M'+x(0)+' '+y(r0)+' L'+x(SMAX)+' '+y(r1),'class':'ln-a'}));

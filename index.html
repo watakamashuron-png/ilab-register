@@ -11,9 +11,9 @@
 <title>理大祭 レジ</title>
 <style>
 :root{
-  --bg:#fbf4e4; --surface:#fffdf7; --ink:#3a2f26; --muted:#76665a; --line:#eadfc8;
-  --accent:#2f7d4f; --accent-ink:#ffffff; --accent-soft:#e1f0dc;
-  --tomato:#d9452f; --sun:#ffd95a;
+  --bg:#f3f4f6; --surface:#ffffff; --ink:#1f2933; --muted:#616e7c; --line:#d5dae1;
+  --accent:#1f6f4a; --accent-ink:#ffffff; --accent-soft:#e3efe8;
+  --tomato:#c2410c; --sun:#f6d860;
   --good:#2f7d4f; --good-soft:#e6f2dc; --bad:#b3341f; --warn:#7a4f00; --warn-soft:#fbe9b6;
   --font:'Hiragino Maru Gothic ProN','Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif;
   color-scheme:light;
@@ -238,21 +238,47 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
 .toast{bottom:auto;top:calc(52px + env(safe-area-inset-top));width:max-content;max-width:92%;text-align:center;background:var(--ink);color:#fff8e6;box-shadow:0 3px 0 rgba(0,0,0,.2)}
 @media (min-width:700px){.awning{height:calc(24px + env(safe-area-inset-top))}header h1{font-size:24px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ===== シンプルテーマ(運営スタッフ用) ===== */
+body,.fs,.done{background-image:none}
+.awning{display:none}
+header{padding-top:calc(10px + env(safe-area-inset-top))}
+header h1{font-size:20px}
+@media (min-width:700px){header h1{font-size:22px}}
+nav{border-top:1px solid var(--line)}
+nav button[aria-current="true"]{border-top-color:var(--accent)}
+.card,.stat{border-radius:10px;box-shadow:none}
+.btn,.seg button,.step button{border-radius:10px}
+.start{background-image:none;background-color:var(--accent);border-radius:14px;box-shadow:none}
+.start:active{transform:none;box-shadow:none;filter:brightness(.92)}
+.fs-foot{border-top:1px solid var(--line)}
+.fs-cust{background:#fff;background-image:none;color:#1f2933}
+.cu-total{color:#111827}
+.cu-label{opacity:1;color:#4b5563}
+.cu-lines{color:#1f2933}
+.cu-foot button{border-color:#9aa5b1;color:#1f2933;opacity:1}
+.done{background-color:var(--good-soft)}
+.ticket{border-radius:14px;box-shadow:none;border:2px solid #e0b92a}
+.board-sum{background:#fff8dc;border:1px solid #e6c95b}
+.cook{border-bottom:1px solid #e6c95b}
+.tk{border-width:1px;border-radius:10px;box-shadow:none}
+.tk.making .no,.tk.late .no{box-shadow:none}
+.tk.making{border-color:#e6c95b}
+.toast{box-shadow:none}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="awning" aria-hidden="true"></div>
-  <header>
-    <div><h1>🧺 理大祭 レジ</h1><div class="tag">中庭前・ピクニック出店</div></div>
+    <header>
+    <div><h1>理大祭・レジ</h1></div>
     <span id="status" class="chip warn">確認中…</span>
   </header>
   <main id="view"></main>
   <nav id="tabs">
-    <button data-tab="register">🧺 レジ</button>
-    <button data-tab="board" id="tab-board">🍳 受け渡し</button>
-    <button data-tab="sales">📒 売上確認</button>
-    <button data-tab="settings">⚙️ 設定</button>
+    <button data-tab="register">レジ</button>
+    <button data-tab="board" id="tab-board">受け渡し</button>
+    <button data-tab="sales">売上確認</button>
+    <button data-tab="settings">設定</button>
   </nav>
 </div>
 <div id="modal-root"></div>
@@ -519,7 +545,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     var a=document.activeElement;
     if(ui.tab==='settings'&&a&&a.tagName==='INPUT'&&v.contains(a)){return;}
     v.innerHTML=ui.tab==='register'?registerView():ui.tab==='board'?boardView():ui.tab==='sales'?salesView():settingsView();
-    var tb=document.getElementById('tab-board');if(tb){var mc=makingCount();tb.innerHTML='🍳 受け渡し'+(mc?'<span class="tabbadge">'+mc+'</span>':'');}
+    var tb=document.getElementById('tab-board');if(tb){var mc=makingCount();tb.innerHTML='受け渡し'+(mc?'<span class="tabbadge">'+mc+'</span>':'');}
     v.scrollTop=keep;
     document.querySelectorAll('#tabs button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===ui.tab);});
   }
@@ -700,7 +726,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   /* ---------- 調理担当の閲覧画面（?view=cook） ---------- */
   function startCook(){
     var nav=document.getElementById('tabs');if(nav)nav.style.display='none';
-    var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'受け渡し':'調理 受け渡し状況';
+    var h1=document.querySelector('header h1');if(h1)h1.textContent=IS_PICKUP?'理大祭・受け渡し':'理大祭・調理状況';
     if(IS_PICKUP)loadBq();
     var lastAct=0;
     var chip=document.getElementById('status');

@@ -17,7 +17,7 @@
 ## 全員向け
 
 - [運営マニュアル（全体像）](https://watakamashuron-png.github.io/ilab-register/guide.html)
-- [収支状況](https://watakamashuron-png.github.io/ilab-register/1114_%E5%8F%8E%E6%94%AF%E7%8A%B6%E6%B3%81.html)
+- [収支状況](https://watakamashuron-png.github.io/ilab-register/1114_balance.html)
 
 ## 困ったとき
 

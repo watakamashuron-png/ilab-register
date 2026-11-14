@@ -34,7 +34,7 @@ header h1{font:900 19px/1.2 var(--font);margin:0}
 .chip{font-size:12px;padding:2px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:700;white-space:nowrap}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 16px 24px}
-nav{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{border:0;background:none;color:var(--muted);font:700 14px var(--font);padding:13px 4px;min-height:48px;cursor:pointer;border-top:3px solid transparent}
 nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--accent)}
 button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -205,6 +205,31 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
 .ticket b{display:block;font:900 clamp(64px,14vw,120px)/1.05 var(--font)}
 .tk-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .tk-fields label{display:block;margin-bottom:4px}
+/* 受け渡しボード */
+.board-sum{background:#fff4cf;border:2px solid var(--sun)}
+.board-sum h2{color:var(--ink)}
+.cook{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed #e6c95b}
+.cook:last-child{border-bottom:0}
+.cook span{font:700 18px var(--font)}
+.cook b{font:900 clamp(44px,12vw,64px)/1.05 var(--font);color:var(--tomato)}
+.cook b small{font-size:20px;color:var(--ink);margin-left:4px}
+.tk{display:flex;gap:12px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 12px;box-shadow:0 2px 0 rgba(120,90,50,.07)}
+.tk .no{min-width:84px;text-align:center;border-radius:14px;padding:6px 10px;font:900 clamp(30px,8vw,44px)/1.1 var(--font)}
+.tk .no small{display:block;font:700 11px var(--font);letter-spacing:.1em}
+.tk.making{border-color:var(--sun)}
+.tk.making .no{background:var(--sun);box-shadow:0 3px 0 #d4a92a}
+.tk.late{border-color:var(--tomato)}
+.tk.late .no{background:#ffd0c7;box-shadow:0 3px 0 #d98c7e}
+.tk.served{opacity:.72}
+.tk.served .no{background:var(--good-soft);color:var(--good)}
+.tk .info{flex:1;min-width:0}
+.tk .info b{display:block;font:700 16px/1.45 var(--font);word-break:keep-all;overflow-wrap:anywhere}
+.tk .info b i{display:block;font-style:normal}
+@media (max-width:420px){.tk{gap:8px;padding:10px}.tk .no{min-width:64px;padding:6px 6px}.tk .btn{padding:10px 10px;font-size:14px}.tk .info b{font-size:15px}nav button{font-size:13px;white-space:nowrap;padding-left:2px;padding-right:2px}.tabbadge{margin-left:2px;padding:0 5px}}
+.tk .info .sub{color:var(--muted);font-size:12px}
+.tk .btn{min-height:56px;padding:10px 14px;white-space:nowrap}
+.tk.served .btn{min-height:44px}
+.tabbadge{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--tomato);color:#fff;font:900 12px/20px var(--font);margin-left:4px;vertical-align:1px}
 .toast{bottom:auto;top:calc(52px + env(safe-area-inset-top));width:max-content;max-width:92%;text-align:center;background:var(--ink);color:#fff8e6;box-shadow:0 3px 0 rgba(0,0,0,.2)}
 @media (min-width:700px){.awning{height:calc(24px + env(safe-area-inset-top))}header h1{font-size:24px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -220,6 +245,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   <main id="view"></main>
   <nav id="tabs">
     <button data-tab="register">🧺 レジ</button>
+    <button data-tab="board" id="tab-board">🍳 受け渡し</button>
     <button data-tab="sales">📒 売上確認</button>
     <button data-tab="settings">⚙️ 設定</button>
   </nav>
@@ -233,7 +259,10 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   /* ===== 送信先(Googleフォーム)の設定。フォーム作成後に書き換える ===== */
   var FORM_URL='https://docs.google.com/forms/d/e/1FAIpQLSfsI41eFSmeukpIQWZ4ZN1v2ICr2LoW2L-SFoAKDKgSmk85Uw/formResponse';   /* 例: https://docs.google.com/forms/d/e/XXXX/formResponse */
   var ENTRY={id:'entry.541146138',kind:'entry.1988070427',date:'entry.1172544032',time:'entry.709787758',by:'entry.1456409413',name:'entry.1686593036',qty:'entry.1570345409',amount:'entry.735398157'};
+  /* 受け渡し同期（Apps Scriptのウェブアプリ URL。空のままなら同期しない） */
+  var BOARD_URL='https://script.google.com/macros/s/AKfycbwZll-5cY49gg9ejxwBMWserUUjvOYcw1rcZhIsqXOOX7XMYYPN97MpPHr-bsUYvbSqpA/exec';
   /* ================================================================ */
+  var IS_COOK=/[?&]view=cook\b/.test(location.search);
   var DAYS=[{key:'2026-11-20',label:'11/20(金)'},{key:'2026-11-21',label:'11/21(土)'}];
   var state={products:[],orders:[]};
   var ui={tab:'register',day:null,sumDay:'all',report:'',cart:null,done:null};
@@ -291,6 +320,21 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     try{if(localStorage.getItem('reji-seeded')) return;}catch(e){}
     [{id:'p-sausage',name:'ソーセージロール',price:350,order:1},{id:'p-appletea',name:'アップルティー',price:150,order:2}].forEach(function(p){backend.set('products',p.id,p);});
     try{localStorage.setItem('reji-seeded','1');}catch(e){}
+  }
+  /* ---------- 受け渡し同期(調理担当の画面へ) ---------- */
+  var bq=[],bSending=false;
+  function loadBq(){try{bq=JSON.parse(localStorage.getItem('reji-boardq')||'[]');}catch(e){bq=[];}}
+  function saveBq(){try{localStorage.setItem('reji-boardq',JSON.stringify(bq));}catch(e){}}
+  function boardPush(msg){if(!BOARD_URL)return;bq.push(msg);saveBq();flushBoard();}
+  function flushBoard(){
+    if(!BOARD_URL||bSending||!bq.length)return;
+    bSending=true;
+    (function next(){
+      if(!bq.length){bSending=false;if(ui.tab==='board'&&!document.activeElement.matches('input,textarea'))render();return;}
+      fetch(BOARD_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(bq[0])})
+        .then(function(){bq.shift();saveBq();next();})
+        .catch(function(){bSending=false;});
+    })();
   }
   function guard(p){return Promise.resolve(p).catch(function(){toast('保存できませんでした');});}
 
@@ -361,7 +405,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     h+='<div class="card"><h2>販売日</h2>'+dayChips(ui.day,false,'setday')+'</div>';
     if(unpriced) h+='<div class="chip warn" style="border-radius:10px;padding:8px 12px;white-space:normal">単価が0円の商品があります。「設定」で単価を入れてください。</div>';
     h+='<button type="button" class="start" data-act="open">お客様の会計を始める</button>';
-    h+='<div class="stat-grid"><div class="stat"><small>'+dayLabel(ui.day)+' この端末の会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
+    h+='<div class="stat-grid"><div class="stat"><small>'+dayLabel(ui.day)+' 会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
     var recent=c.orders.slice().sort(function(a,b){return b.ts-a.ts;}).slice(0,3);
     if(recent.length){
       h+='<div class="card"><h2>直近の会計</h2><ul class="log">';
@@ -370,12 +414,53 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     }
     return h+'</section>';
   }
+  function unitFor(n){return /ロール|ソーセージ/.test(n)?'本':/ティー|茶|ドリンク|コーヒー|ジュース/.test(n)?'杯':'個';}
+  function boardText(o){return (o.items||[]).map(function(it){return '<i>'+esc(it.name)+'×'+it.qty+'</i>';}).join('');}
+  function isMaking(o){return o.status==='making';}
+  function makingCount(){return state.orders.filter(isMaking).length;}
+  function setStatus(id,st){
+    var o=state.orders.filter(function(x){return x.id===id;})[0];if(!o||!backend)return;
+    var no=Object.assign({},o,{status:st,servedAt:st==='served'?Date.now():null});
+    guard(backend.set('orders',id,no));
+    boardPush({op:'upsert',order:no});
+  }
+  function boardView(){
+    var list=state.orders.filter(function(o){return o.day===ui.day;});
+    var making=list.filter(isMaking).sort(function(a,b){return a.ts-b.ts;});
+    var served=list.filter(function(o){return !isMaking(o);}).sort(function(a,b){return (b.servedAt||b.ts)-(a.servedAt||a.ts);}).slice(0,8);
+    var by={},names=[];
+    making.forEach(function(o){(o.items||[]).forEach(function(it){if(!by[it.name]){by[it.name]=0;names.push(it.name);}by[it.name]+=it.qty;});});
+    var h='<section><div class="card"><h2>販売日</h2>'+dayChips(ui.day,false,'setday')+'</div>';
+    h+='<div class="card board-sum"><h2>いま作る数（作成中の合計）</h2>';
+    if(!names.length) h+='<div class="empty">作成中のご注文はありません</div>';
+    names.forEach(function(n){h+='<div class="cook"><span>'+esc(n)+'</span><b class="num">'+by[n]+'<small>'+unitFor(n)+'</small></b></div>';});
+    h+='</div>';
+    h+='<div class="card"><h2>作成中 '+making.length+'件（古い順）</h2><div style="display:flex;flex-direction:column;gap:10px">';
+    if(!making.length) h+='<div class="empty">なし</div>';
+    making.forEach(function(o){
+      var m=Math.max(0,Math.floor((Date.now()-o.ts)/60000));
+      h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過'+(m>=10?'（お待たせしています）':'')+'</div></div><button type="button" class="btn" data-act="serve" data-id="'+esc(o.id)+'">提供済み</button></div>';
+    });
+    h+='</div></div>';
+    h+='<div class="card"><h2>提供済み（直近8件）</h2><div style="display:flex;flex-direction:column;gap:8px">';
+    if(!served.length) h+='<div class="empty">なし</div>';
+    served.forEach(function(o){
+      h+='<div class="tk served"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">提供済み'+(o.servedAt?' '+timeStr(o.servedAt):'')+'</div></div><button type="button" class="btn ghost" data-act="unserve" data-id="'+esc(o.id)+'">作成中に戻す</button></div>';
+    });
+    h+='</div></div>';
+    if(BOARD_URL){
+      var cookUrl=location.href.split('#')[0].split('?')[0]+'?view=cook';
+      h+='<div class="card"><h2>調理担当のスマホ用</h2><p class="note" style="margin:0 0 8px">このURLを開くと、作成中の注文と合計本数が見られます（見るだけ・数秒おきに自動更新）。</p><textarea readonly rows="2" style="width:100%;font:13px var(--font);border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff">'+esc(cookUrl)+'</textarea><div class="row" style="margin-top:8px"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div>';
+    }
+    h+='<p class="note" style="margin:0">会計を確定すると「作成中」に入ります。お客様に渡したら「提供済み」を押してください。この画面は売上の集計には影響しません。</p></section>';
+    return h;
+  }
   function orderText(o){return (o.items||[]).map(function(it){return esc(it.name)+'×'+it.qty;}).join('、');}
   function salesView(){
     var c=calcSales(ui.sumDay);
     var h='<section><div class="card"><h2>確認する日</h2>'+dayChips(ui.sumDay,true,'setsum')+'</div>';
-    h+='<p class="note" style="margin:0">ここに出るのは、この端末で記録した分だけです。全員分の売上は会計スプレッドシートの「★売上」で確認します。</p>';
-    h+='<div class="stat-grid"><div class="stat main"><small>この端末の売上</small><div class="v num">'+yen(c.revenue)+'</div></div><div class="stat"><small>会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
+    h+='<p class="note" style="margin:0">この画面の数字は、このレジで記録した分です。全体の収支は、会計スプレッドシートの「★売上」や、ライブ用ダッシュボードで確認します。</p>';
+    h+='<div class="stat-grid"><div class="stat main"><small>売上</small><div class="v num">'+yen(c.revenue)+'</div></div><div class="stat"><small>会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
     h+='<div class="card"><h2>売上シートへの送信</h2>';
     if(!formReady()) h+='<p class="note" style="margin:0">送信先(Googleフォーム)がまだ設定されていません。</p>';
     else h+='<p class="note" style="margin:0 0 10px">会計を確定すると自動で送信されます。電波が悪いときは「未送信」に残り、つながると自動で再送します。</p><div class="row"><b>未送信 '+outbox.length+'件</b><button type="button" class="btn ghost" data-act="resend"'+(outbox.length?'':' disabled')+'>今すぐ再送</button></div>';
@@ -384,7 +469,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     if(!c.byProd.length) h+='<tr><td colspan="3" class="empty">記録なし</td></tr>';
     c.byProd.forEach(function(p){h+='<tr><td>'+esc(p.name)+'</td><td class="num">'+p.qty+'</td><td class="num">'+yen(p.amount)+'</td></tr>';});
     h+='</tbody><tfoot><tr><td>合計</td><td class="num">'+c.qty+'</td><td class="num">'+yen(c.revenue)+'</td></tr></tfoot></table></div></div>';
-    h+='<div class="card"><h2>会計履歴(この端末)</h2>';
+    h+='<div class="card"><h2>会計履歴</h2>';
     var list=c.orders.slice().sort(function(a,b){return b.ts-a.ts;}).slice(0,50);
     if(!list.length) h+='<div class="empty">記録なし</div>';
     else{h+='<ul class="log">';list.forEach(function(o){
@@ -398,15 +483,15 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
   function settingsView(){
     var prods=sortedProducts();
     var h='<section><div class="card"><h2>整理番号</h2><div class="seg" role="group" aria-label="整理番号"><button type="button" data-act="tkt" data-v="1" aria-pressed="'+ticketOn()+'">使う</button><button type="button" data-act="tkt" data-v="0" aria-pressed="'+(!ticketOn())+'">使わない</button></div>';
-    h+='<div class="tk-fields"><div><label class="note" for="tk-prefix">端末の記号(例:A)</label><input id="tk-prefix" maxlength="2" placeholder="なし" value="'+esc(ticketPrefix())+'"></div><div><label class="note" for="tk-next">'+dayLabel(ui.day)+' の次の番号</label><input id="tk-next" type="number" inputmode="numeric" min="1" value="'+ticketNext(ui.day)+'"></div></div>';
-    h+='<p class="note">「使う」のとき、会計の完了画面に「整理番号○○を渡してください」と出ます。番号は日付ごとに1から順に付きます。レジを複数の端末で使うときは、端末ごとに記号(A、Bなど)を変えると番号が重なりません。</p></div>';
+    h+='<div class="tk-fields"><div><label class="note" for="tk-prefix">予備の端末を使うときだけ記号(例:B)</label><input id="tk-prefix" maxlength="2" placeholder="なし" value="'+esc(ticketPrefix())+'"></div><div><label class="note" for="tk-next">'+dayLabel(ui.day)+' の次の番号</label><input id="tk-next" type="number" inputmode="numeric" min="1" value="'+ticketNext(ui.day)+'"></div></div>';
+    h+='<p class="note">「使う」のとき、会計の完了画面に「整理番号○○を渡してください」と出ます。番号は日付ごとに1から順に付きます。故障などで予備の端末に切り替えるときは、その端末だけ記号(Bなど)を入れると、番号が重なりません。</p></div>';
     h+='<div class="card"><h2>商品と単価</h2>';
     if(!prods.length) h+='<div class="empty">商品がありません</div>';
     prods.forEach(function(p){
       h+='<div class="row" style="margin-bottom:8px"><input data-pname="'+esc(p.id)+'" value="'+esc(p.name)+'" aria-label="商品名" style="flex:2;min-width:120px"><input data-pprice="'+esc(p.id)+'" type="number" inputmode="numeric" min="0" value="'+p.price+'" aria-label="単価(円)" style="flex:1;min-width:80px"><button type="button" class="btn danger" data-act="delprod" data-id="'+esc(p.id)+'">削除</button></div>';
     });
     h+='<form id="prodform" class="row" style="margin-top:10px"><input id="np-name" placeholder="商品名を追加" required style="flex:2;min-width:120px"><input id="np-price" type="number" inputmode="numeric" min="0" placeholder="単価" required style="flex:1;min-width:80px"><button class="btn" type="submit">追加</button></form>';
-    h+='<p class="note">商品と単価は、この端末ごとの設定です。複数の端末で使うときは、どの端末も同じ内容にしてください。単価を変えても、過去の会計は当時の単価のまま集計されます。</p></div></section>';
+    h+='<p class="note">単価を変えても、過去の会計は当時の単価のまま集計されます。</p></div></section>';
     return h;
   }
   function render(){
@@ -414,7 +499,8 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     var keep=v.scrollTop;
     var a=document.activeElement;
     if(ui.tab==='settings'&&a&&a.tagName==='INPUT'&&v.contains(a)){return;}
-    v.innerHTML=ui.tab==='register'?registerView():ui.tab==='sales'?salesView():settingsView();
+    v.innerHTML=ui.tab==='register'?registerView():ui.tab==='board'?boardView():ui.tab==='sales'?salesView():settingsView();
+    var tb=document.getElementById('tab-board');if(tb){var mc=makingCount();tb.innerHTML='🍳 受け渡し'+(mc?'<span class="tabbadge">'+mc+'</span>':'');}
     v.scrollTop=keep;
     document.querySelectorAll('#tabs button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===ui.tab);});
   }
@@ -434,7 +520,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     var root=document.getElementById('modal-root');
     if(ui.done){
       var d=ui.done;
-      root.innerHTML='<div class="done" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><div class="mark" aria-hidden="true">✓</div><h2 id="done-title">会計が終了しました。</h2>'+(d.ticket?'<div class="ticket"><small>整理番号</small><b>'+esc(d.ticket)+'</b></div><p>整理番号 '+esc(d.ticket)+' を渡してください。</p>':'<p>お客様に商品をお渡しください。</p>')+'<ul>'+d.items.map(function(it){return '<li>'+esc(it.name)+' × '+it.qty+'</li>';}).join('')+'</ul><div class="note">お支払い金額</div><div class="num" style="font:900 44px var(--font)">'+yen(d.total)+'</div>'+(d.received?'<div class="change">お預かり '+yen(d.received)+' ／ おつり '+yen(d.change)+'</div>':'')+'<button type="button" class="btn next" data-act="next" id="next-btn">次のお客様へ</button><button type="button" class="btn danger" data-act="undoorder">この会計を取り消す</button></div>';
+      root.innerHTML='<div class="done" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><div class="mark" aria-hidden="true">✓</div><h2 id="done-title">会計が終了しました。</h2>'+(d.ticket?'<div class="ticket"><small>整理番号</small><b>'+esc(d.ticket)+'</b></div><p>整理番号 '+esc(d.ticket)+' を渡してください。</p>':'<p>お客様に商品をお渡しください。</p>')+'<p class="note" style="margin:4px 0 0">「受け渡し」画面に、作成中として追加されました。</p><ul>'+d.items.map(function(it){return '<li>'+esc(it.name)+' × '+it.qty+'</li>';}).join('')+'</ul><div class="note">お支払い金額</div><div class="num" style="font:900 44px var(--font)">'+yen(d.total)+'</div>'+(d.received?'<div class="change">お預かり '+yen(d.received)+' ／ おつり '+yen(d.change)+'</div>':'')+'<button type="button" class="btn next" data-act="next" id="next-btn">次のお客様へ</button><button type="button" class="btn danger" data-act="undoorder">この会計を取り消す</button></div>';
       var nb=document.getElementById('next-btn');if(nb)nb.focus();
       return;
     }
@@ -477,10 +563,11 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     var rec=ui.cart.received===''?0:(parseInt(ui.cart.received,10)||0);
     if(rec&&rec<t.total){toast('お預かり金額が足りません');return;}
     var id=uid();
-    var order={id:id,day:ui.day,items:t.items,total:t.total,received:rec,change:rec?rec-t.total:0,by:getName(),ts:Date.now()};
+    var order={id:id,day:ui.day,items:t.items,total:t.total,received:rec,change:rec?rec-t.total:0,by:getName(),ts:Date.now(),status:'making'};
     if(ticketOn()) order.ticket=takeTicket(ui.day);
     guard(backend.set('orders',id,order));
     enqueue(order,'売上');
+    boardPush({op:'upsert',order:order});
     ui.done={id:id,order:order,ticket:order.ticket||'',items:t.items,total:t.total,received:rec,change:order.change};
     ui.cart=null;renderModal();
   }
@@ -488,6 +575,7 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     if(!order) return;
     guard(backend.del('orders',order.id));
     enqueue(order,'取消');
+    boardPush({op:'del',id:order.id});
   }
 
   /* ---------- staff dialog ---------- */
@@ -550,6 +638,9 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     else if(a==='undoorder'){var d=ui.done;ui.done=null;renderModal();if(d){cancelOrder(d.order);toast('この会計を取り消しました');}}
     else if(a==='delorder'){if(window.__cd===id){window.__cd=null;cancelOrder(state.orders.filter(function(o){return o.id===id;})[0]);toast('取り消しました');}else{window.__cd=id;toast('もう一度「取消」を押すと会計を取り消します');}}
     else if(a==='delprod'){if(window.__cd===id){window.__cd=null;guard(backend.del('products',id));}else{window.__cd=id;toast('もう一度「削除」を押すと商品を削除します');}}
+    else if(a==='resyncboard'){flushBoard();toast('送っています');}
+    else if(a==='serve'){setStatus(id,'served');}
+    else if(a==='unserve'){setStatus(id,'making');}
     else if(a==='resend'){flush();toast('再送しています');}
     else if(a==='tkt'){lsSet('reji-ticket-on',v);render();toast(v==='1'?'整理番号を使います':'整理番号を使いません');}
     else if(a==='report'){
@@ -582,14 +673,54 @@ nav button[aria-current="true"]{color:var(--accent);border-top-color:var(--tomat
     if(ev.key==='Escape'){var sr=document.getElementById('staff-root');if(sr&&sr.innerHTML){renderStaff(false);return;}if(ui.cart&&!ui.done){ui.cart=null;renderModal();}}
     if(ev.key==='Enter'&&ev.target.id==='st-input'){document.querySelector('[data-act="savestaff"]').click();}
   });
-  window.addEventListener('online',flush);
-  setInterval(flush,20000);
+  window.addEventListener('online',function(){flush();flushBoard();});
+  setInterval(function(){flush();flushBoard();},20000);
+  setInterval(function(){if(ui.tab==='board'&&!ui.cart&&!ui.done)render();},30000);
+
+  /* ---------- 調理担当の閲覧画面（?view=cook） ---------- */
+  function startCook(){
+    var nav=document.getElementById('tabs');if(nav)nav.style.display='none';
+    var h1=document.querySelector('header h1');if(h1)h1.textContent='調理 受け渡し状況';
+    var chip=document.getElementById('status');
+    var list=[],last=0,failed=false;
+    function draw(){
+      var v=document.getElementById('view');
+      var now=Date.now(),stale=!last||now-last>20000;
+      if(chip){chip.textContent=stale?'通信待ち':'更新 '+new Date(last).toLocaleTimeString('ja-JP');chip.className='chip'+(stale?' warn':'');}
+      var by={},names=[];
+      list.forEach(function(o){(o.items||[]).forEach(function(it){if(!by[it.name]){by[it.name]=0;names.push(it.name);}by[it.name]+=it.qty;});});
+      var h='<section>';
+      if(!BOARD_URL)h+='<div class="card"><b>同期先が設定されていません。</b></div>';
+      else if(stale)h+='<div class="card" style="border-color:var(--tomato)"><b>通信が途絶えています。</b><div class="note" style="margin:4px 0 0">'+(last?'最後に更新できた時刻：'+new Date(last).toLocaleTimeString('ja-JP')+'。':'まだ読み込めていません。')+'電波の良い場所に移動するか、ページを再読み込みしてください。表示は古い可能性があります。</div></div>';
+      h+='<div class="card board-sum"><h2>いま作る数（作成中の合計）</h2>';
+      if(!names.length)h+='<div class="empty">作成中のご注文はありません</div>';
+      names.forEach(function(n){h+='<div class="cook"><span>'+esc(n)+'</span><b class="num">'+by[n]+'<small>'+unitFor(n)+'</small></b></div>';});
+      h+='</div><div class="card"><h2>作成中 '+list.length+'件（古い順）</h2><div style="display:flex;flex-direction:column;gap:10px">';
+      if(!list.length)h+='<div class="empty">なし</div>';
+      list.forEach(function(o){
+        var m=Math.max(0,Math.floor((now-o.ts)/60000));
+        h+='<div class="tk making'+(m>=10?' late':'')+'"><div class="no num"><small>'+(o.ticket?'整理番号':'会計')+'</small>'+(o.ticket?esc(o.ticket):timeStr(o.ts))+'</div><div class="info"><b>'+boardText(o)+'</b><div class="sub">'+m+'分経過</div></div></div>';
+      });
+      v.innerHTML=h+'</div></div></section>';
+    }
+    function poll(){
+      if(!BOARD_URL||document.hidden)return;
+      fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+        list=(j.orders||[]).slice().sort(function(a,b){return a.ts-b.ts;});last=Date.now();failed=false;draw();
+      }).catch(function(){failed=true;draw();});
+    }
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)poll();});
+    draw();poll();setInterval(poll,5000);setInterval(draw,10000);
+  }
 
   /* ---------- boot ---------- */
+  if(IS_COOK){startCook();return;}
+  loadBq();
   loadOutbox();
   render();
   start(localBackend());
   flush();
+  flushBoard();
 })();
 </script>
 </body>

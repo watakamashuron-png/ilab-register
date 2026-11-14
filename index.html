@@ -827,7 +827,6 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
       return '<ul class="hist">'+a.map(function(e){
         var q=(kind==='ship'||kind==='req')?e.qty+'本':(e.qty>0?'+':'−')+Math.abs(e.qty)+'本';
         var why=kind==='req'?(e.reason==='done'?'出荷済み':'発注中'):(e.reason||'');
-        if(kind==='req'&&e.reason==='done')return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+why+'</span></li>';
         return '<li><span class="tm num">'+timeStr(e.ts)+'</span><b class="q num">'+q+'</b><span class="why">'+esc(why)+'</span><button type="button" class="btn danger" data-sa="void" data-id="'+esc(e.id)+'">'+(st.confirm===e.id?'もう一度押すと取消':'取消')+'</button></li>';
       }).join('')+'</ul>';
     }

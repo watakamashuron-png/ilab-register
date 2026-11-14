@@ -266,6 +266,14 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
 .tk.making .no,.tk.late .no{box-shadow:none}
 .tk.making{border-color:#e6c95b}
 .toast{box-shadow:none}
+.eq{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;margin:6px 0 10px}
+.eq>div{display:flex;flex-direction:column;align-items:center;min-width:0}
+.eq small{font-size:13px;color:var(--muted)}
+.eq b{font:900 clamp(20px,6.4vw,52px)/1.15 var(--font);white-space:nowrap}
+.eq>span{font:700 clamp(20px,5vw,40px)/1.15 var(--font);color:var(--muted);padding-bottom:2px}
+.eqres{border-radius:12px;padding:10px 12px;text-align:center}
+.eqres small{display:block;font-size:14px;font-weight:700}
+.eqres b{display:block;font:900 clamp(30px,10vw,76px)/1.15 var(--font);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -512,7 +520,12 @@ nav button[aria-current="true"]{border-top-color:var(--accent)}
     var all=calcSales('all'),bal=exp.v==null?null:exp.v-all.revenue;
     h+='<div class="card"><h2>収支（支出 − 売上）</h2>';
     if(bal==null) h+='<p class="note" style="margin:0">'+(BOARD_URL?'支出合計を取得中です。表示されないときは、電波を確認してください。':'支出合計を取得できません。')+'</p>';
-    else h+='<div class="row" style="justify-content:space-between"><span>支出合計</span><b class="num">'+yen(exp.v)+'</b></div><div class="row" style="justify-content:space-between"><span>売上合計（全日）</span><b class="num">'+yen(all.revenue)+'</b></div><div class="row" style="justify-content:space-between"><span>支出 − 売上</span><b class="num" style="font-size:22px;color:'+(bal>0?'var(--bad)':'var(--good)')+'">'+(bal>0?'':bal<0?'−':'')+yen(Math.abs(bal))+' '+(bal>0?'赤字':bal<0?'黒字':'収支ゼロ')+'</b></div><p class="note" style="margin:6px 0 0">支出は会計ダッシュボードの支出合計です（'+timeStr(exp.at)+' 更新）。</p>';
+    else{
+      var col=bal>0?'var(--bad)':'var(--good)',bg=bal>0?'#fbe3de':'#e3f2e6',lab=bal>0?'赤字':bal<0?'黒字':'収支ゼロ';
+      h+='<div class="eq"><div><small>支出</small><b class="num">'+yen(exp.v)+'</b></div><span>−</span><div><small>売上</small><b class="num">'+yen(all.revenue)+'</b></div><span>＝</span><div><small>差額</small><b class="num" style="color:'+col+'">'+yen(Math.abs(bal))+'</b></div></div>';
+      h+='<div class="eqres" style="background:'+bg+';color:'+col+'"><small>支出 − 売上</small><b class="num">'+yen(Math.abs(bal))+' '+lab+'</b></div>';
+      h+='<p class="note" style="margin:8px 0 0">支出は会計ダッシュボードの支出合計です（'+timeStr(exp.at)+' 更新）。売上は全日の合計です。</p>';
+    }
     h+='</div>';
     h+='<div class="card"><h2>売上シートへの送信</h2>';
     if(!formReady()) h+='<p class="note" style="margin:0">送信先(Googleフォーム)がまだ設定されていません。</p>';

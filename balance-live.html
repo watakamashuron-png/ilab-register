@@ -35,9 +35,9 @@ h2{font-size:17px;margin:0 0 8px}
 .tile b{display:block;font-size:clamp(21px,5.4vw,27px);line-height:1.25;font-variant-numeric:tabular-nums}
 .tile.neg b{color:var(--bad)}.tile.pos b{color:var(--good)}
 .tile em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
-.res{border-radius:10px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700}
+.res{border-radius:10px;padding:10px 14px;margin-top:8px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px;font-weight:700}
 .res.neg{background:var(--bad-bg);color:var(--bad)}.res.pos{background:var(--good-bg);color:var(--good)}
-.res b{font-size:22px;font-variant-numeric:tabular-nums}
+.res b{font-size:22px;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}
 .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:4px}
 .sum div{background:rgba(128,128,128,.08);border-radius:8px;padding:8px 10px}
 .sum small{display:block;color:var(--ink2);font-size:12px}.sum b{font-variant-numeric:tabular-nums;font-size:17px}
@@ -221,7 +221,7 @@ td.n{font-variant-numeric:tabular-nums}
     document.getElementById('tiles').innerHTML=t;
 
     var s='<div class="sum"><div><small>売上合計</small><b>'+(sales==null?'―':yen(sales))+'</b></div><div><small>集金合計</small><b>'+(col==null?'―':yen(col))+'</b></div><div><small>総収入</small><b>'+(income==null?'―':yen(income))+'</b></div><div><small>総支出</small><b>'+(exp==null?'―':yen(exp))+'</b></div></div>';
-    if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額（総収入−総支出）</span><b>'+yen(bal)+'</b></div>';
+    if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額<small style="font-weight:400;font-size:12.5px">（総収入−総支出）</small></span><b>'+yen(bal)+'</b></div>';
     if(bal!=null&&bal<0)s+='<p class="note">いまはマイナスです。支出が先に出ているためで、当日の売上で変わっていきます。</p>';
     document.getElementById('summary').innerHTML=s;
 

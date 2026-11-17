@@ -17,6 +17,10 @@
 ## 全員向け
 
 - [運営マニュアル（全体像）](https://watakamashuron-png.github.io/ilab-register/guide.html)
+- [シフト表（11/20〜22）](https://watakamashuron-png.github.io/ilab-register/guide.html#shift)
+- [リンク集](https://watakamashuron-png.github.io/ilab-register/guide.html#links)
+- [収支状況ライブ（閲覧専用）](https://docs.google.com/spreadsheets/d/1vV_fsyc4F-mPJPzJN33p0vEJwEAv-Rg2OXdSKJz_JUE/edit?usp=sharing)
+- [理大祭の公式ルール確認（Notebook）](https://notebook.google.com/notebook/70b84b9b-ec5c-418f-8c45-5619088bc3a8)
 - [収支状況](https://watakamashuron-png.github.io/ilab-register/1114_balance.html)
 
 ## 困ったとき

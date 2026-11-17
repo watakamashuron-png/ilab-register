@@ -95,6 +95,7 @@ td.n{font-variant-numeric:tabular-nums}
   var SALES_MS=5000, SHEET_MS=30000, STALE_MS=40000;
   var DAYS=[{key:'2026-11-20',label:'11/20(金)',cls:'d1'},{key:'2026-11-21',label:'11/21(土)',cls:'d2'}];
   var H0=9,H1=17;
+  var PEOPLE=17;   /* 一人当たりを出すときに割る人数 */
   /* ================================ */
   var S={sales:null,salesAt:0,salesErr:'',sheet:null,sheetAt:0,sheetErr:'',boardExpense:null,mismatchSince:0};
   document.getElementById('sheet-link').href='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/edit?usp=sharing';
@@ -217,11 +218,15 @@ td.n{font-variant-numeric:tabular-nums}
     t+=tile('集金額',col==null?'―':yen(col));
     t+=tile('支出合計',exp==null?'―':yen(exp));
     t+=tile('残高',bal==null?'―':yen(bal),bal==null?'':bal<0?'neg':'pos','集金額＋売上−支出');
-    t+=tile('提出件数',sh&&sh.receipts!=null?sh.receipts+'件':'―');
+    var rc=sh?(sh.receipts!=null?sh.receipts:(sh.items&&sh.items.length?sh.items.reduce(function(a,x){return a+x.count;},0):null)):null;
+    var pp=bal==null?null:bal/PEOPLE;
+    t+=tile('一人当たりの収支',pp==null?'―':(Math.round(pp)>0?'＋':'')+yen(pp),pp==null?'':Math.round(pp)<0?'neg':'pos','残高÷'+PEOPLE+'人');
+    t+=tile('提出件数',rc!=null?rc+'件':'―');
     document.getElementById('tiles').innerHTML=t;
 
     var s='<div class="sum"><div><small>売上合計</small><b>'+(sales==null?'―':yen(sales))+'</b></div><div><small>集金合計</small><b>'+(col==null?'―':yen(col))+'</b></div><div><small>総収入</small><b>'+(income==null?'―':yen(income))+'</b></div><div><small>総支出</small><b>'+(exp==null?'―':yen(exp))+'</b></div></div>';
     if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額<small style="font-weight:400;font-size:12.5px">（総収入−総支出）</small></span><b>'+yen(bal)+'</b></div>';
+    if(bal!=null){var per=bal/PEOPLE;s+='<div class="res '+(Math.round(per)<0?'neg':'pos')+'"><span>一人当たりの収支<small style="font-weight:400;font-size:12.5px">（差額÷'+PEOPLE+'人）</small></span><b>'+(Math.round(per)>0?'＋':'')+yen(per)+'</b></div>';}
     if(bal!=null&&bal<0)s+='<p class="note">いまはマイナスです。支出が先に出ているためで、当日の売上で変わっていきます。</p>';
     document.getElementById('summary').innerHTML=s;
 

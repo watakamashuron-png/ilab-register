@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>理大祭 収支状況ライブ</title>
+<style>
+:root{
+  color-scheme:light dark;
+  --page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--ring:rgba(11,11,11,.10);
+  --blue:#2a78d6;--orange:#eb6834;--teal:#1f8a8a;--track:rgba(128,128,128,.14);
+  --good:#006300;--good-bg:rgba(12,163,12,.12);--bad:#c0302f;--bad-bg:rgba(208,59,59,.10);--warn:#8a5a00;--warn-bg:rgba(235,160,30,.16);
+}
+@media (prefers-color-scheme:dark){:root{
+  --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--ring:rgba(255,255,255,.10);
+  --blue:#3987e5;--orange:#d95926;--teal:#5cc4c4;--track:rgba(255,255,255,.10);
+  --good:#2fd12f;--good-bg:rgba(12,163,12,.18);--bad:#ff7b78;--bad-bg:rgba(208,59,59,.18);--warn:#f0c060;--warn-bg:rgba(235,160,30,.16);
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--ink);line-height:1.6;font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:18px 16px 56px}
+h1{font-size:clamp(22px,5.4vw,28px);margin:0 0 2px;line-height:1.3}
+h2{font-size:17px;margin:0 0 8px}
+.lead{color:var(--ink2);margin:0 0 10px;font-size:13.5px}
+.nav{font-size:13px;margin:0 0 8px}.nav a{color:var(--blue)}
+.status{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--ink2);margin:0 0 14px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--muted);margin-right:5px;vertical-align:baseline}
+.dot.ok{background:#1fa51f}.dot.ng{background:#d03b3b}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:14px;margin:0 0 12px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:14px 16px;margin:0 0 14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 14px}
+.tile small{display:block;color:var(--ink2);font-size:12.5px}
+.tile b{display:block;font-size:clamp(21px,5.4vw,27px);line-height:1.25;font-variant-numeric:tabular-nums}
+.tile.neg b{color:var(--bad)}.tile.pos b{color:var(--good)}
+.tile em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
+.res{border-radius:10px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700}
+.res.neg{background:var(--bad-bg);color:var(--bad)}.res.pos{background:var(--good-bg);color:var(--good)}
+.res b{font-size:22px;font-variant-numeric:tabular-nums}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:4px}
+.sum div{background:rgba(128,128,128,.08);border-radius:8px;padding:8px 10px}
+.sum small{display:block;color:var(--ink2);font-size:12px}.sum b{font-variant-numeric:tabular-nums;font-size:17px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--grid);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12.5px;color:var(--ink2);font-weight:700}
+tfoot td{font-weight:700;border-bottom:0}
+td.n{font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--teal);border-radius:99px}
+.hr{display:grid;grid-template-columns:54px 1fr;gap:4px 8px;align-items:center;font-size:13px}
+.hr .l{color:var(--ink2)}
+.hr .b{display:grid;gap:3px}
+.hb{display:flex;align-items:center;gap:6px;min-height:14px}
+.hb i{display:block;height:10px;border-radius:99px;min-width:0}
+.hb span{font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.d1 i{background:var(--blue)}.d2 i{background:var(--orange)}
+.lg{display:flex;gap:14px;font-size:12.5px;color:var(--ink2);margin:0 0 8px}
+.lg b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.empty{color:var(--muted);text-align:center;padding:10px 0;font-size:14px}
+.note{color:var(--ink2);font-size:12.5px;margin:6px 0 0}
+.foot{color:var(--muted);font-size:12.5px;margin-top:22px}
+.foot a{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="nav"><a href="guide.html">← 運営マニュアルに戻る</a></p>
+<h1>理大祭 収支状況ライブ</h1>
+<p class="lead">売上はレジから直接、集金と支出はスプレッドシートから読み込んで、自動で更新します。見るだけのページです。</p>
+<div class="status" aria-live="polite">
+  <span><i class="dot" id="d-sales"></i>売上（レジ）<span id="t-sales">取得中</span></span>
+  <span><i class="dot" id="d-sheet"></i>集金・支出（シート）<span id="t-sheet">取得中</span></span>
+</div>
+<div id="alert"></div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card"><h2>収支サマリー</h2><div id="summary"></div></div>
+<div class="card"><h2>品目別集計（支出）</h2><div id="items"></div></div>
+<div class="card"><h2>商品別の売上</h2><div id="prod"></div></div>
+<div class="card"><h2>時間帯別の売上（9:00〜18:00）</h2><div id="hours"></div></div>
+
+<p class="foot">売上は、レジの会計が確定すると数秒で反映されます。集金額・支出・提出件数は、レシートや集金の入力から数十秒〜数分で反映されます。<br>
+<a id="sheet-link" href="#" target="_blank" rel="noopener">元のスプレッドシートを開く ↗</a>　<a href="1114_balance.html">11/14時点の見通しを見る</a></p>
+<noscript><p>このページの表示にはJavaScriptが必要です。</p></noscript>
+</div>
+<script>
+(function(){
+  /* ============ 設定 ============ */
+  var BOARD_URL='https://script.google.com/macros/s/AKfycbwZll-5cY49gg9ejxwBMWserUUjvOYcw1rcZhIsqXOOX7XMYYPN97MpPHr-bsUYvbSqpA/exec';
+  var SHEET_ID='1vV_fsyc4F-mPJPzJN33p0vEJwEAv-Rg2OXdSKJz_JUE';
+  var SHEET_NAME='ダッシュボード';
+  var SALES_MS=5000, SHEET_MS=30000, STALE_MS=40000;
+  var DAYS=[{key:'2026-11-20',label:'11/20(金)',cls:'d1'},{key:'2026-11-21',label:'11/21(土)',cls:'d2'}];
+  var H0=9,H1=17;
+  /* ================================ */
+  var S={sales:null,salesAt:0,salesErr:'',sheet:null,sheetAt:0,sheetErr:'',boardExpense:null,mismatchSince:0};
+  document.getElementById('sheet-link').href='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/edit?usp=sharing';
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function yen(n){return (n<0?'−':'')+'¥'+Math.abs(Math.round(n||0)).toLocaleString('ja-JP');}
+  function num(s){if(s==null)return null;var t=String(s).replace(/[,，¥￥\s円件]/g,'').replace(/[−‐–]/g,'-');var m=t.match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):null;}
+  function hhmmss(ts){return ts?new Date(ts).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';}
+  function jst(ts){return new Date(ts+9*3600e3);}
+
+  /* ---------- 売上: レジの同期データから集計 ---------- */
+  function calcSales(j){
+    var map={};
+    (j.orders||[]).forEach(function(o){if(o&&o.id)map[o.id]=o;});
+    (j.served||[]).forEach(function(o){if(o&&o.id)map[o.id]=o;});
+    var list=Object.keys(map).map(function(k){return map[k];});
+    var r={total:0,count:list.length,byProd:{},byHour:{},byDay:{}};
+    list.forEach(function(o){
+      var d=jst(o.ts||Date.now()),day=o.day||d.toISOString().slice(0,10),h=d.getUTCHours();
+      (o.items||[]).forEach(function(it){
+        var amt=(it.qty||0)*(it.price||0),p=r.byProd[it.name]||(r.byProd[it.name]={qty:0,amount:0});
+        p.qty+=it.qty||0;p.amount+=amt;r.total+=amt;
+        var hk=h<H0?'pre':h>H1?'post':h;
+        var cell=r.byHour[hk]||(r.byHour[hk]={});cell[day]=(cell[day]||0)+amt;
+        r.byDay[day]=(r.byDay[day]||0)+amt;
+      });
+    });
+    return r;
+  }
+  function pullSales(){
+    if(document.hidden)return;
+    fetch(BOARD_URL+(BOARD_URL.indexOf('?')<0?'?':'&')+'t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      S.sales=calcSales(j);S.salesAt=Date.now();S.salesErr='';
+      if(typeof j.expense==='number'&&isFinite(j.expense))S.boardExpense=j.expense;
+      render();
+    }).catch(function(e){S.salesErr=String(e&&e.message||e);render();});
+  }
+
+  /* ---------- 集金・支出: シート(gviz)から読み込み ---------- */
+  function parseCSV(t){
+    var rows=[],row=[],cur='',q=false;
+    for(var i=0;i<t.length;i++){
+      var c=t[i];
+      if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+      else if(c==='"')q=true;
+      else if(c===','){row.push(cur);cur='';}
+      else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur='';}
+      else cur+=c;
+    }
+    if(cur!==''||row.length){row.push(cur);rows.push(row);}
+    return rows;
+  }
+  function below(rows,label){
+    for(var i=0;i<rows.length;i++){
+      var j=rows[i].indexOf(label);
+      if(j>=0&&rows[i+1])return num(rows[i+1][j]);
+    }
+    return null;
+  }
+  function readSheet(rows){
+    var o={collected:below(rows,'集金額（円）'),expense:below(rows,'支出合計（円）'),receipts:below(rows,'提出件数'),sheetSales:below(rows,'売上合計（円）'),items:[]};
+    var st=-1;
+    for(var i=0;i<rows.length;i++){if((rows[i][0]||'').trim()==='品目別集計'){st=i;break;}}
+    if(st>=0){
+      for(var k=st+2;k<rows.length;k++){
+        var r=rows[k],name=(r[0]||'').trim();
+        if(!name||name==='合計')break;
+        o.items.push({name:name,amount:num(r[1])||0,count:num(r[2])||0});
+      }
+    }
+    if(o.collected==null&&o.expense==null)throw new Error('表の形式が想定と違います');
+    return o;
+  }
+  function gvizUrl(fmt){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx='+fmt+'&headers=0&sheet='+encodeURIComponent(SHEET_NAME)+'&range=A1:H60&t='+Date.now();}
+  function jsonp(url){
+    return new Promise(function(res,rej){
+      var cb='gv'+Date.now().toString(36),s=document.createElement('script'),to=setTimeout(function(){cl();rej(new Error('timeout'));},15000);
+      function cl(){clearTimeout(to);try{delete window[cb];}catch(e){window[cb]=undefined;}if(s.parentNode)s.parentNode.removeChild(s);}
+      window[cb]=function(d){cl();res(d);};
+      s.onerror=function(){cl();rej(new Error('script error'));};
+      s.src=url+';responseHandler:'+cb;document.head.appendChild(s);
+    });
+  }
+  function pullSheet(){
+    if(document.hidden)return;
+    fetch(gvizUrl('out:csv'),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(function(t){return readSheet(parseCSV(t));})
+    .catch(function(){
+      return jsonp(gvizUrl('out:json')).then(function(d){
+        if(d.status==='error')throw new Error('シートを読めません');
+        var rows=(d.table.rows||[]).map(function(r){return (r.c||[]).map(function(c){return c?(c.f!=null?c.f:(c.v!=null?String(c.v):'')):'';});});
+        return readSheet(rows);
+      });
+    }).then(function(o){S.sheet=o;S.sheetAt=Date.now();S.sheetErr='';render();})
+    .catch(function(e){S.sheetErr=String(e&&e.message||e);render();});
+  }
+
+  /* ---------- 表示 ---------- */
+  function setDot(id,tid,at,err,ms){
+    var ok=at&&Date.now()-at<ms&&!err;
+    document.getElementById(id).className='dot '+(ok?'ok':(at||err?'ng':''));
+    document.getElementById(tid).textContent=at?(' '+hhmmss(at)+' 更新'+(ok?'':'（止まっています）')):(err?'（読み込めません）':' 取得中');
+  }
+  function tile(label,val,cls,sub){return '<div class="tile '+(cls||'')+'"><small>'+label+'</small><b>'+val+'</b>'+(sub?'<em>'+sub+'</em>':'')+'</div>';}
+  function render(){
+    setDot('d-sales','t-sales',S.salesAt,S.salesErr,STALE_MS);
+    setDot('d-sheet','t-sheet',S.sheetAt,S.sheetErr,STALE_MS*3);
+    var sh=S.sheet,sa=S.sales,al='';
+    if(S.salesErr&&!sa)al+='<div class="banner">レジの売上を読み込めません。電波を確認して、ページを再読み込みしてください。</div>';
+    else if(S.salesAt&&Date.now()-S.salesAt>STALE_MS)al+='<div class="banner">レジとの通信が止まっています。表示の売上は、'+hhmmss(S.salesAt)+'時点のものです。</div>';
+    if(S.sheetErr&&!sh)al+='<div class="banner">集金・支出のシートを読み込めません。シートが「リンクを知っている全員」に共有されているか確認してください。'+(S.boardExpense!=null?'支出合計だけは、レジ側の値を使っています。':'')+'</div>';
+    var exp=sh&&sh.expense!=null?sh.expense:S.boardExpense,col=sh&&sh.collected!=null?sh.collected:null;
+    var sales=sa?sa.total:null;
+    /* シートの売上と比べて、レジ側が少ない状態が続くときは知らせる */
+    if(sa&&sh&&sh.sheetSales!=null&&sa.total<sh.sheetSales){if(!S.mismatchSince)S.mismatchSince=Date.now();}else S.mismatchSince=0;
+    if(S.mismatchSince&&Date.now()-S.mismatchSince>180000)al+='<div class="banner">レジから読み込んだ売上（'+yen(sa.total)+'）が、シートの売上合計（'+yen(sh.sheetSales)+'）より少なくなっています。取消が反映されていないか、同期されていない会計がある可能性があります。</div>';
+    document.getElementById('alert').innerHTML=al;
+
+    var income=(sales==null||col==null)?null:sales+col,bal=(income==null||exp==null)?null:income-exp;
+    var t='';
+    t+=tile('集金額',col==null?'―':yen(col));
+    t+=tile('支出合計',exp==null?'―':yen(exp));
+    t+=tile('残高',bal==null?'―':yen(bal),bal==null?'':bal<0?'neg':'pos','集金額＋売上−支出');
+    t+=tile('提出件数',sh&&sh.receipts!=null?sh.receipts+'件':'―');
+    document.getElementById('tiles').innerHTML=t;
+
+    var s='<div class="sum"><div><small>売上合計</small><b>'+(sales==null?'―':yen(sales))+'</b></div><div><small>集金合計</small><b>'+(col==null?'―':yen(col))+'</b></div><div><small>総収入</small><b>'+(income==null?'―':yen(income))+'</b></div><div><small>総支出</small><b>'+(exp==null?'―':yen(exp))+'</b></div></div>';
+    if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額（総収入−総支出）</span><b>'+yen(bal)+'</b></div>';
+    if(bal!=null&&bal<0)s+='<p class="note">いまはマイナスです。支出が先に出ているためで、当日の売上で変わっていきます。</p>';
+    document.getElementById('summary').innerHTML=s;
+
+    var it=sh?sh.items:null,h='';
+    if(!it)h='<div class="empty">'+(S.sheetErr?'読み込めません':'取得中')+'</div>';
+    else if(!it.length)h='<div class="empty">まだ提出がありません</div>';
+    else{
+      var tot=it.reduce(function(a,x){return a+x.amount;},0),cnt=it.reduce(function(a,x){return a+x.count;},0);
+      h='<table><thead><tr><th>品目</th><th>金額</th><th>件数</th><th>割合</th></tr></thead><tbody>';
+      it.forEach(function(x){var p=tot?x.amount/tot*100:0;h+='<tr><td>'+esc(x.name)+'<div class="bar"><i style="width:'+p.toFixed(1)+'%"></i></div></td><td class="n">'+yen(x.amount)+'</td><td class="n">'+x.count+'</td><td class="n">'+p.toFixed(1)+'%</td></tr>';});
+      h+='</tbody><tfoot><tr><td>合計</td><td class="n">'+yen(tot)+'</td><td class="n">'+cnt+'</td><td class="n">100%</td></tr></tfoot></table>';
+    }
+    document.getElementById('items').innerHTML=h;
+
+    h='';
+    if(!sa)h='<div class="empty">'+(S.salesErr?'読み込めません':'取得中')+'</div>';
+    else{
+      var names=Object.keys(sa.byProd);
+      if(!names.length)h='<div class="empty">まだ売上がありません</div>';
+      else{
+        var q=0;h='<table><thead><tr><th>商品</th><th>個数</th><th>売上</th></tr></thead><tbody>';
+        names.forEach(function(n){var p=sa.byProd[n];q+=p.qty;h+='<tr><td>'+esc(n)+'</td><td class="n">'+p.qty+'</td><td class="n">'+yen(p.amount)+'</td></tr>';});
+        h+='</tbody><tfoot><tr><td>合計</td><td class="n">'+q+'</td><td class="n">'+yen(sa.total)+'</td></tr></tfoot></table><p class="note">会計 '+sa.count+'件</p>';
+      }
+    }
+    document.getElementById('prod').innerHTML=h;
+
+    h='';
+    if(!sa)h='<div class="empty">'+(S.salesErr?'読み込めません':'取得中')+'</div>';
+    else{
+      var rows=[],mx=0,i,k;
+      for(i=H0;i<=H1;i++)rows.push({l:i+'時台',k:i});
+      if(sa.byHour.pre)rows.unshift({l:H0+'時前',k:'pre'});
+      if(sa.byHour.post)rows.push({l:(H1+1)+'時以降',k:'post'});
+      rows.forEach(function(r){DAYS.forEach(function(d){mx=Math.max(mx,(sa.byHour[r.k]||{})[d.key]||0);});});
+      h='<div class="lg">'+DAYS.map(function(d,n){return '<span><b style="background:var(--'+(n?'orange':'blue')+')"></b>'+d.label+'</span>';}).join('')+'</div><div class="hr">';
+      rows.forEach(function(r){
+        h+='<div class="l">'+r.l+'</div><div class="b">';
+        DAYS.forEach(function(d){var v=(sa.byHour[r.k]||{})[d.key]||0;h+='<div class="hb '+d.cls+'"><i style="width:'+(mx?Math.max(v?2:0,v/mx*70):0).toFixed(1)+'%"></i><span>'+(v?yen(v):'')+'</span></div>';});
+        h+='</div>';
+      });
+      h+='</div><table style="margin-top:10px"><tbody><tr><td><b>日ごとの合計</b></td>'+DAYS.map(function(d){return '<td class="n"><small>'+d.label+'</small> <b>'+yen(sa.byDay[d.key]||0)+'</b></td>';}).join('')+'</tr></tbody></table>';
+    }
+    document.getElementById('hours').innerHTML=h;
+  }
+
+  render();pullSales();pullSheet();
+  setInterval(pullSales,SALES_MS);setInterval(pullSheet,SHEET_MS);setInterval(render,10000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){pullSales();pullSheet();}});
+})();
+</script>
+</body>
+</html>

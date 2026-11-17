@@ -136,7 +136,7 @@ td.n{font-variant-numeric:tabular-nums}
 <div class="card"><h2>収支サマリー</h2><div id="summary"></div></div>
 <section class="card" id="sim" aria-live="polite">
   <h2>売上のシミュレーター</h2>
-  <p class="sub">ソーセージロールとアップルティーの販売数を入れると、収支の見込みがわかります。支出は11/14時点の見込み（支出済み89,368円＋追加予定35,115円＝124,483円）で計算しています。上の実績の数字とは別です。</p>
+  <p class="sub">ソーセージロールとアップルティーの販売数を入れると、収支の見込みがわかります。支出は、上の実績の「支出合計」（スプレッドシート）をそのまま使います。まだ買っていない材料や、これから出る追加購入は入っていません。集金は含めません。<br>各300個を超えて売る分は、追加の材料費（容器代11円込みで、ロール83円/個、ティー30円/杯）を引いて計算します。</p>
   <label class="chk"><input type="checkbox" id="refund"> 誓約金10,000円が返納される場合</label>
   <div class="sim-grid">
     <div class="sim-in" id="simRoll">
@@ -162,8 +162,8 @@ td.n{font-variant-numeric:tabular-nums}
   <p class="hero-per" id="sPer"></p>
   <div class="stiles">
     <div class="stile"><div class="t-l">売上合計</div><div class="t-v" id="sRev"></div><div class="t-s" id="sRevS"></div></div>
-    <div class="stile"><div class="t-l">集金（返金予定）</div><div class="t-v">17,000円</div><div class="t-s">17人×1,000円<br>収支には含めない</div></div>
-    <div class="stile"><div class="t-l">支出合計（見込み）</div><div class="t-v">124,483円</div><div class="t-s">販売数によらず固定</div></div>
+    <div class="stile"><div class="t-l">支出合計（実績）</div><div class="t-v" id="sExp"></div><div class="t-s">上の「支出合計」と同じ<br>販売数によらず固定</div></div>
+    <div class="stile"><div class="t-l">追加の材料費</div><div class="t-v" id="sExtra"></div><div class="t-s" id="sExtraS"></div></div>
     <div class="stile"><div class="t-l" id="sGapL">黒字まで</div><div class="t-v" id="sGap"></div><div class="t-s" id="sGapS"></div></div>
   </div>
   <p class="sim-cap" id="sCap"></p>
@@ -176,14 +176,15 @@ td.n{font-variant-numeric:tabular-nums}
 <div class="card"><h2>商品別の売上</h2><div id="prod"></div></div>
 <div class="card"><h2>時間帯別の売上（9:00〜18:00）</h2><div id="hours"></div></div>
 
-<p class="foot">売上は、レジの会計が確定すると数秒で反映されます。集金額・支出は、レシートや集金の入力から数十秒〜数分で反映されます。<br>
+<p class="foot">売上は、レジの会計が確定すると数秒で反映されます。支出は、レシートや集金の入力から数十秒〜数分で反映されます。<br>
 <a id="sheet-link" href="#" target="_blank" rel="noopener">元のスプレッドシートを開く ↗</a>　<a href="1114_balance.html">11/14時点の見通しを見る</a></p>
 <noscript><p>このページの表示にはJavaScriptが必要です。</p></noscript>
 </div>
 <script>
 (function(){
 'use strict';
-var MEMBERS=17, COLLECT=0, HELD=17000, DONE=89368, PLAN=35115, EXP=DONE+PLAN;
+var MEMBERS=17, COLLECT=0, EXP=124483;
+var BASE=300, UR=83, UT=30;   /* 材料は各300個分まで仕入れ済み。超えた分の材料費（容器代11円込み）：ロール83円/個、ティー30円/杯 */   /* 実績の支出が読めるまでは、11/14時点の見込みを仮に使う */
 var PR=350, PT=150, REFUND=10000;
 var refund=false;
 var NS='http://www.w3.org/2000/svg';
@@ -199,10 +200,11 @@ function hideTip(){tip.hidden=true;}
 /* ===== 個別シミュレーター ===== */
 var sR=300, sT=300, SMAX=600;
 function clampS(v){v=Math.round(+v);if(isNaN(v)){v=0;}return Math.max(0,Math.min(SMAX,v));}
-function simProfit(r,t){return PR*r+PT*t+COLLECT-EXP+(refund?REFUND:0);}
+function extraCost(r,t){return UR*Math.max(0,r-BASE)+UT*Math.max(0,t-BASE);}   /* 300個を超えた分の追加材料費 */
+function simProfit(r,t){return PR*r+PT*t+COLLECT-EXP-extraCost(r,t)+(refund?REFUND:0);}
 function simT(){return EXP-COLLECT-(refund?REFUND:0);}   /* 収支ゼロになる売上額 */
 function renderSim(){
-  var p=simProfit(sR,sT), rev=PR*sR+PT*sT, good=p>=0;
+  var p=simProfit(sR,sT), rev=PR*sR+PT*sT, good=p>=0, ex=extraCost(sR,sT);
   $('inR').value=sR; $('rgR').value=sR; $('inT').value=sT; $('rgT').value=sT;
   $('subR').textContent='売上 '+fmt(PR*sR)+'円';
   $('subT').textContent='売上 '+fmt(PT*sT)+'円';
@@ -210,18 +212,26 @@ function renderSim(){
   var b=$('sBadge'); b.className='badge '+(good?'good':'bad');
   $('sBadgeIc').textContent=good?'✓':'!'; $('sBadgeTx').textContent=good?'黒字':'赤字';
   $('sPer').innerHTML=perTx(p);
-  $('sEq').textContent='売上'+fmt(rev)+'円'+(refund?' ＋ 誓約金10,000円':'')+' − 支出'+fmt(EXP)+'円';
+  $('sEq').textContent='売上'+fmt(rev)+'円'+(refund?' ＋ 誓約金10,000円':'')+' − 支出'+fmt(EXP)+'円'+(ex?' − 追加材料費'+fmt(ex)+'円':'');
   $('sRev').textContent=fmt(rev)+'円';
   $('sRevS').innerHTML='ロール'+fmt(PR*sR)+'円<br>＋ティー'+fmt(PT*sT)+'円';
-  var T=simT(), need=T-rev;      /* 黒字までに足りない売上額 */
-  if(need>0){
-    $('sGapL').textContent='黒字まで あと'; $('sGap').textContent=fmt(need)+'円';
-    $('sGapS').textContent='ロールだけなら'+Math.ceil(need/PR)+'個、ティーだけなら'+Math.ceil(need/PT)+'杯';
-    $('sCap').textContent='今の組み合わせでは赤字です。ロールをあと'+Math.ceil(need/PR)+'個、またはティーをあと'+Math.ceil(need/PT)+'杯売ると、収支ゼロになります。';
+  $('sExp').textContent=fmt(EXP)+'円';
+  $('sExtra').textContent=fmt(ex)+'円';
+  $('sExtraS').innerHTML=ex?('ロール'+Math.max(0,sR-BASE)+'個超：'+fmt(UR*Math.max(0,sR-BASE))+'円<br>ティー'+Math.max(0,sT-BASE)+'杯超：'+fmt(UT*Math.max(0,sT-BASE))+'円'):'各'+BASE+'個までは、材料は仕入れ済み';
+  if(p<0){
+    var kr=0,kt=0;
+    while(simProfit(sR+kr,sT)<0&&kr<3000){kr++;}
+    while(simProfit(sR,sT+kt)<0&&kt<3000){kt++;}
+    $('sGapL').textContent='黒字まで あと'; $('sGap').textContent=fmt(p)+'円';
+    $('sGapS').textContent='ロールだけなら'+kr+'個、ティーだけなら'+kt+'杯';
+    $('sCap').textContent='今の組み合わせでは赤字です。ロールをあと'+kr+'個、またはティーをあと'+kt+'杯売ると、収支ゼロになります。';
   }else{
-    $('sGapL').textContent='黒字ラインとの差'; $('sGap').textContent='+'+fmt(-need)+'円';
-    $('sGapS').textContent='ロール'+Math.floor(-need/PR)+'個分 / ティー'+Math.floor(-need/PT)+'杯分の余裕';
-    $('sCap').textContent=need===0?'ちょうど収支ゼロです。':'黒字です。ロールが約'+Math.floor(-need/PR)+'個、またはティーが約'+Math.floor(-need/PT)+'杯売れなくても、まだ黒字を保てます。';
+    var mr=0,mt=0;
+    while(mr<sR&&simProfit(sR-mr-1,sT)>=0){mr++;}
+    while(mt<sT&&simProfit(sR,sT-mt-1)>=0){mt++;}
+    $('sGapL').textContent='黒字ラインとの差'; $('sGap').textContent='+'+fmt(p)+'円';
+    $('sGapS').textContent='ロール'+mr+'個分 / ティー'+mt+'杯分の余裕';
+    $('sCap').textContent=p===0?'ちょうど収支ゼロです。':'黒字です。ロールが約'+mr+'個、またはティーが約'+mt+'杯売れなくても、まだ黒字を保てます。';
   }
   drawSim();
 }
@@ -232,12 +242,19 @@ function drawSim(){
   function x(v){return m.l+v/SMAX*pw;}
   function y(v){return m.t+(SMAX-v)/SMAX*ph;}
   var T=simT();
-  function rAt(t){return Math.max(0,Math.min(SMAX,(T-PT*t)/PR));}
-  var r0=rAt(0), r1=rAt(SMAX);
+  /* 収支ゼロになるロール数。300個を超えた分は、追加の材料費のぶん1個あたりの利益が減る */
+  function rAt(t){
+    var rhs=T-PT*t+UT*Math.max(0,t-BASE), r;
+    if(rhs<=PR*BASE){r=rhs/PR;}else{r=BASE+(rhs-PR*BASE)/(PR-UR);}
+    return Math.max(0,Math.min(SMAX,r));
+  }
+  var pts=[];for(var tt=0;tt<=SMAX;tt+=10){pts.push([tt,rAt(tt)]);}
+  if(pts.every(function(q){return q[0]!==BASE;})){pts.push([BASE,rAt(BASE)]);pts.sort(function(a,b){return a[0]-b[0];});}
+  var lineD=pts.map(function(q,i){return (i?'L':'M')+x(q[0])+' '+y(q[1]);}).join(' ');
   var svg=el('svg',{viewBox:'0 0 '+W+' '+H,role:'img','aria-label':'ロールとティーの販売数の組み合わせと収支。斜めの線より上が黒字です。'});
   /* ゾーン：赤＝線の下側、緑＝上側 */
-  svg.appendChild(el('path',{d:'M'+x(0)+' '+y(0)+' L'+x(SMAX)+' '+y(0)+' L'+x(SMAX)+' '+y(r1)+' L'+x(0)+' '+y(r0)+' Z','class':'zone-b'}));
-  svg.appendChild(el('path',{d:'M'+x(0)+' '+y(r0)+' L'+x(SMAX)+' '+y(r1)+' L'+x(SMAX)+' '+y(SMAX)+' L'+x(0)+' '+y(SMAX)+' Z','class':'zone-g'}));
+  svg.appendChild(el('path',{d:lineD+' L'+x(SMAX)+' '+y(0)+' L'+x(0)+' '+y(0)+' Z','class':'zone-b'}));
+  svg.appendChild(el('path',{d:lineD+' L'+x(SMAX)+' '+y(SMAX)+' L'+x(0)+' '+y(SMAX)+' Z','class':'zone-g'}));
   /* 目盛り */
   [0,100,200,300,400,500,600].forEach(function(v){
     svg.appendChild(el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),'class':v===0?'axisl':'gridl'}));
@@ -249,7 +266,7 @@ function drawSim(){
   if(!(x(sT)>W-m.r-150&&y(sR)<m.t+50)){svg.appendChild(el('text',{x:W-m.r-8,y:m.t+18,'text-anchor':'end','class':'t-sec'},'✓ 黒字ゾーン'));}
   svg.appendChild(el('text',{x:m.l+8,y:y(0)-8,'class':'t-sec'},'! 赤字ゾーン'));
   /* 収支ゼロの線 */
-  svg.appendChild(el('path',{d:'M'+x(0)+' '+y(r0)+' L'+x(SMAX)+' '+y(r1),'class':'ln-a'}));
+  svg.appendChild(el('path',{d:lineD,'class':'ln-a'}));
   svg.appendChild(el('text',{x:x(SMAX*0.5),y:y(rAt(SMAX*0.5))-10,'text-anchor':'middle','class':'t-ink sm'},'収支ゼロの線'));
   /* 各300個（上のバーの想定） */
   svg.appendChild(el('circle',{cx:x(300),cy:y(300),r:5,fill:'none',stroke:'var(--ink2)','stroke-width':1.5}));
@@ -308,6 +325,7 @@ function bindSim(){
 
 $('refund').addEventListener('change',function(e){refund=e.target.checked;renderSim();});
 var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(drawSim,80);});
+window.simSetExp=function(v){if(v!=null&&isFinite(v)&&v!==EXP){EXP=v;renderSim();}};
 buildPresets();bindSim();renderSim();
 })();
 </script>
@@ -438,17 +456,18 @@ buildPresets();bindSim();renderSim();
     if(S.mismatchSince&&Date.now()-S.mismatchSince>180000)al+='<div class="banner">レジから読み込んだ売上（'+yen(sa.total)+'）が、シートの売上合計（'+yen(sh.sheetSales)+'）より少なくなっています。取消が反映されていないか、同期されていない会計がある可能性があります。</div>';
     document.getElementById('alert').innerHTML=al;
 
-    var income=(sales==null||col==null)?null:sales+col,bal=(income==null||exp==null)?null:income-exp;
+    if(window.simSetExp&&exp!=null)window.simSetExp(exp);
+    var bal=(sales==null||exp==null)?null:sales-exp;
     var t='';
-    t+=tile('集金額',col==null?'―':yen(col));
+    t+=tile('売上',sales==null?'―':yen(sales));
     t+=tile('支出合計',exp==null?'―':yen(exp));
-    t+=tile('残高',bal==null?'―':yen(bal),bal==null?'':bal<0?'neg':'pos','集金額＋売上−支出');
+    t+=tile('残高',bal==null?'―':yen(bal),bal==null?'':bal<0?'neg':'pos','売上−支出（集金は含めない）');
     var pp=bal==null?null:bal/PEOPLE;
     t+=tile('一人当たりの収支',pp==null?'―':(Math.round(pp)>0?'＋':'')+yen(pp),pp==null?'':Math.round(pp)<0?'neg':'pos','残高÷'+PEOPLE+'人');
     document.getElementById('tiles').innerHTML=t;
 
-    var s='<div class="sum"><div><small>売上合計</small><b>'+(sales==null?'―':yen(sales))+'</b></div><div><small>集金合計</small><b>'+(col==null?'―':yen(col))+'</b></div><div><small>総収入</small><b>'+(income==null?'―':yen(income))+'</b></div><div><small>総支出</small><b>'+(exp==null?'―':yen(exp))+'</b></div></div>';
-    if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額<small style="font-weight:400;font-size:12.5px">（総収入−総支出）</small></span><b>'+yen(bal)+'</b></div>';
+    var s='<div class="sum"><div><small>売上合計</small><b>'+(sales==null?'―':yen(sales))+'</b></div><div><small>支出合計</small><b>'+(exp==null?'―':yen(exp))+'</b></div></div>';
+    if(bal!=null)s+='<div class="res '+(bal<0?'neg':'pos')+'"><span>収支差額<small style="font-weight:400;font-size:12.5px">（売上−支出・集金は含めない）</small></span><b>'+yen(bal)+'</b></div>';
     if(bal!=null){var per=bal/PEOPLE;s+='<div class="res '+(Math.round(per)<0?'neg':'pos')+'"><span>一人当たりの収支<small style="font-weight:400;font-size:12.5px">（差額÷'+PEOPLE+'人）</small></span><b>'+(Math.round(per)>0?'＋':'')+yen(per)+'</b></div>';}
     if(bal!=null&&bal<0)s+='<p class="note">いまはマイナスです。支出が先に出ているためで、当日の売上で変わっていきます。</p>';
     document.getElementById('summary').innerHTML=s;

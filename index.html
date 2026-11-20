@@ -97,6 +97,9 @@ textarea{width:100%;min-height:140px;font:12px/1.4 monospace;border:1px solid va
 .fs .cash{gap:10px}
 .item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
 .item .nm{flex:1;min-width:0}
+.item.set{background:var(--accent-soft);border-radius:12px;padding:12px 12px;margin-top:6px;border-bottom:0}
+.item.set.off{background:transparent;border:1px dashed var(--line)}
+.item .nm small{font-size:13px;opacity:.85}
 .item .nm b{font-size:21px;line-height:1.3}
 .item .nm div{color:var(--ink);opacity:.75;font-size:16px}
 .step{display:flex;align-items:center;gap:8px}
@@ -366,6 +369,38 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
   }
   function staffList(){try{return JSON.parse(localStorage.getItem('reji-staff-list')||'[]');}catch(e){return [];}}
   function sortedProducts(){return state.products.slice().sort(function(a,b){return (a.order||0)-(b.order||0);});}
+  /* ---------- セット料金（この端末の設定。過去の会計・商品の単価には影響しない） ---------- */
+  function setPriceVal(){var n=parseInt(lsGet('reji-set-price',''),10);return n>0?n:0;}
+  function setCfg(){
+    var roll=state.products.filter(function(p){return p.id==='p-sausage'||p.name===STOCK_ITEM;})[0];
+    var tea=state.products.filter(function(p){return p.id==='p-appletea'||p.name==='アップルティー';})[0];
+    var price=setPriceVal();
+    var list=roll&&tea?(roll.price||0)+(tea.price||0):0;
+    return {roll:roll,tea:tea,price:price,list:list,ok:!!(roll&&tea&&price>0&&list>0)};
+  }
+  function setInfoText(){
+    var S=setCfg();
+    if(!S.price)return '未設定です。入れるまで、会計画面のセットは使えません。';
+    if(!S.roll||!S.tea)return 'ソーセージロールかアップルティーが商品にないため、使えません。';
+    var d=S.list-S.price;
+    return '通常 '+yen(S.list)+' → セット '+yen(S.price)+(d>0?'（'+yen(d)+'お得）':d<0?'（通常より '+yen(-d)+' 高い設定です）':'（通常と同じ）');
+  }
+  /* 会計の表示用: セットの2行を「セット」1行にまとめる */
+  function dispLines(items){
+    var out=[],sq=0,sa=0;
+    (items||[]).forEach(function(it){
+      if(it.set){sa+=it.qty*it.price;sq=Math.max(sq,it.qty);}
+      else out.push({label:it.name,qty:it.qty,amount:it.qty*it.price});
+    });
+    if(sq)out.unshift({label:'セット（ロール＋ティー）',qty:sq,amount:sa});
+    return out;
+  }
+  /* 調理・受け渡し・履歴の表示用: 同じ商品は1行にまとめる（個数はセット分も含む） */
+  function mergeItems(items){
+    var by={},names=[];
+    (items||[]).forEach(function(it){if(!by[it.name]){by[it.name]={name:it.name,qty:0};names.push(it.name);}by[it.name].qty+=it.qty;});
+    return names.map(function(n){return by[n];});
+  }
   /* 整理番号(揚げ時間の関係で整理番号で受付する場合に使用) */
   function lsGet(k,d){try{var v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}}
   function lsSet(k,v){try{localStorage.setItem(k,String(v));}catch(e){}}
@@ -483,12 +518,12 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
   /* ---------- calc ---------- */
   function calcSales(dayKey){
     var orders=state.orders.filter(function(o){return dayKey==='all'||o.day===dayKey;});
-    var by={},revenue=0,qty=0;
-    orders.forEach(function(o){(o.items||[]).forEach(function(it){
+    var by={},revenue=0,qty=0,sets=0;
+    orders.forEach(function(o){sets+=o.sets||0;(o.items||[]).forEach(function(it){
       var r=by[it.name]||(by[it.name]={name:it.name,qty:0,amount:0});
       r.qty+=it.qty;r.amount+=it.qty*it.price;qty+=it.qty;revenue+=it.qty*it.price;
     });});
-    return {orders:orders,byProd:Object.keys(by).map(function(k){return by[k];}),revenue:revenue,qty:qty};
+    return {orders:orders,byProd:Object.keys(by).map(function(k){return by[k];}),revenue:revenue,qty:qty,sets:sets};
   }
 
   /* ---------- main views ---------- */
@@ -516,7 +551,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     return h+'</section>';
   }
   function unitFor(n){return /ロール|ソーセージ/.test(n)?'本':/ティー|茶|ドリンク|コーヒー|ジュース/.test(n)?'杯':'個';}
-  function boardText(o){return (o.items||[]).map(function(it){return '<i>'+esc(it.name)+'×'+it.qty+'</i>';}).join('');}
+  function boardText(o){return mergeItems(o.items).map(function(it){return '<i>'+esc(it.name)+'×'+it.qty+'</i>';}).join('');}
   function isMaking(o){return o.status==='making';}
   function makingCount(){return state.orders.filter(isMaking).length;}
   function setStatus(id,st){
@@ -558,12 +593,13 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     h+='<div class="card"><h2>このレジ端末の送信状況</h2><div class="row"><b class="chip'+(bq.length?' warn':'')+'">'+(bq.length?'同期待ち '+bq.length+'件':'同期済み')+'</b>'+(bq.length?'<button type="button" class="btn ghost" data-act="resyncboard">いま送る</button>':'')+'</div></div></section>';
     return h;
   }
-  function orderText(o){return (o.items||[]).map(function(it){return esc(it.name)+'×'+it.qty;}).join('、');}
+  function orderText(o){return mergeItems(o.items).map(function(it){return esc(it.name)+'×'+it.qty;}).join('、')+(o.sets?'（うちセット'+o.sets+'組）':'');}
   function salesView(){
     var c=calcSales(ui.sumDay);
     var h='<section><div class="card"><h2>確認する日</h2>'+dayChips(ui.sumDay,true,'setsum')+'</div>';
     h+='<p class="note" style="margin:0">この画面の数字は、このレジで記録した分です。全体の収支は、会計スプレッドシートの「★売上」や、ライブ用ダッシュボードで確認します。</p>';
     h+='<div class="stat-grid"><div class="stat main"><small>売上</small><div class="v num">'+yen(c.revenue)+'</div></div><div class="stat"><small>会計数</small><div class="v num">'+c.orders.length+'件</div></div><div class="stat"><small>販売数</small><div class="v num">'+c.qty+'個</div></div></div>';
+    if(c.sets>0) h+='<p class="note" style="margin:0">うちセット料金で売ったのは '+c.sets+' 組です（ロール'+c.sets+'個＋ティー'+c.sets+'杯。金額は上の売上に含まれています）。</p>';
     var all=calcSales('all'),bal=exp.v==null?null:exp.v-all.revenue;
     h+='<div class="card"><h2>収支（支出 − 売上）</h2>';
     if(bal==null) h+='<p class="note" style="margin:0">'+(BOARD_URL?'支出合計を取得中です。表示されないときは、電波を確認してください。'+(exp.err?'（原因：'+esc(exp.err)+'）':''):'支出合計を取得できません。')+'</p>';
@@ -603,8 +639,9 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     prods.forEach(function(p){
       h+='<div class="row" style="margin-bottom:8px"><input data-pname="'+esc(p.id)+'" value="'+esc(p.name)+'" aria-label="商品名" style="flex:2;min-width:120px"><input data-pprice="'+esc(p.id)+'" type="number" inputmode="numeric" min="0" value="'+p.price+'" aria-label="単価(円)" style="flex:1;min-width:80px"><button type="button" class="btn danger" data-act="delprod" data-id="'+esc(p.id)+'">削除</button></div>';
     });
+    h+='<div class="row" style="margin-bottom:8px"><input value="セット（ロール＋ティー）" readonly aria-label="セットの名前" style="flex:2;min-width:120px"><input id="set-price" type="number" inputmode="numeric" min="0" placeholder="未設定" value="'+(setPriceVal()||'')+'" aria-label="セット料金(円)" style="flex:1;min-width:80px"><button type="button" class="btn danger" tabindex="-1" aria-hidden="true" style="visibility:hidden">削除</button></div><p class="note" id="set-info" style="margin:-2px 0 10px">セット：'+esc(setInfoText())+'</p>';
     h+='<form id="prodform" class="row" style="margin-top:10px"><input id="np-name" placeholder="商品名を追加" required style="flex:2;min-width:120px"><input id="np-price" type="number" inputmode="numeric" min="0" placeholder="単価" required style="flex:1;min-width:80px"><button class="btn" type="submit">追加</button></form>';
-    h+='<p class="note">単価を変えても、過去の会計は当時の単価のまま集計されます。</p></div></section>';
+    h+='<p class="note">単価を変えても、過去の会計は当時の単価のまま集計されます。セットの料金は、空にすると使えなくなり、この端末だけに保存されます。</p></div></section>';
     return h;
   }
   function render(){
@@ -622,18 +659,27 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
   function cartTotals(){
     var total=0,qty=0,items=[];
     sortedProducts().forEach(function(p){var q=ui.cart.qty[p.id]||0;if(q>0){items.push({productId:p.id,name:p.name,price:p.price||0,qty:q});total+=q*(p.price||0);qty+=q;}});
-    return {total:total,qty:qty,items:items};
+    /* セット: ロール1＋ティー1を、セット料金になるよう単価を按分した2行で記録する（商品名は変えないので、調理・在庫の数はそのまま合う） */
+    var sets=0,S=setCfg();
+    if(S.ok&&(ui.cart.sets||0)>0){
+      sets=ui.cart.sets;
+      var rp=Math.round(S.roll.price*S.price/S.list),tp=S.price-rp;
+      items.push({productId:S.roll.id,name:S.roll.name,price:rp,qty:sets,set:true});
+      items.push({productId:S.tea.id,name:S.tea.name,price:tp,qty:sets,set:true});
+      total+=sets*S.price;qty+=sets*2;
+    }
+    return {total:total,qty:qty,items:items,sets:sets};
   }
   function linesHtml(t){
     if(!t.items.length) return '<li class="none">商品を選んでください</li>';
-    return t.items.map(function(it){return '<li><span>'+esc(it.name)+' × '+it.qty+'</span><span class="num">'+yen(it.qty*it.price)+'</span></li>';}).join('');
+    return dispLines(t.items).map(function(l){return '<li><span>'+esc(l.label)+' × '+l.qty+'</span><span class="num">'+yen(l.amount)+'</span></li>';}).join('');
   }
   function changeText(c){return c===null?'':(c<0?'金額が足りません(不足 '+yen(-c)+')':'おつり '+yen(c));}
   function renderModal(){
     var root=document.getElementById('modal-root');
     if(ui.done){
       var d=ui.done;
-      root.innerHTML='<div class="done" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><div class="mark" aria-hidden="true">✓</div><h2 id="done-title">会計が終了しました。</h2>'+(d.ticket?'<div class="ticket"><small>整理番号</small><b>'+esc(d.ticket)+'</b></div><p>整理番号 '+esc(d.ticket)+' を渡してください。</p>':'<p>お客様に商品をお渡しください。</p>')+'<p class="note" style="margin:4px 0 0">「受け渡し」画面に、作成中として追加されました。</p><ul>'+d.items.map(function(it){return '<li>'+esc(it.name)+' × '+it.qty+'</li>';}).join('')+'</ul><div class="note">お支払い金額</div><div class="num" style="font:900 44px var(--font)">'+yen(d.total)+'</div>'+(d.received?'<div class="change">お預かり '+yen(d.received)+' ／ おつり '+yen(d.change)+'</div>':'')+'<button type="button" class="btn next" data-act="next" id="next-btn">次のお客様へ</button><button type="button" class="btn danger" data-act="undoorder">この会計を取り消す</button></div>';
+      root.innerHTML='<div class="done" role="alertdialog" aria-modal="true" aria-labelledby="done-title"><div class="mark" aria-hidden="true">✓</div><h2 id="done-title">会計が終了しました。</h2>'+(d.ticket?'<div class="ticket"><small>整理番号</small><b>'+esc(d.ticket)+'</b></div><p>整理番号 '+esc(d.ticket)+' を渡してください。</p>':'<p>お客様に商品をお渡しください。</p>')+'<p class="note" style="margin:4px 0 0">「受け渡し」画面に、作成中として追加されました。</p><ul>'+dispLines(d.items).map(function(l){return '<li>'+esc(l.label)+' × '+l.qty+'</li>';}).join('')+'</ul><div class="note">お支払い金額</div><div class="num" style="font:900 44px var(--font)">'+yen(d.total)+'</div>'+(d.received?'<div class="change">お預かり '+yen(d.received)+' ／ おつり '+yen(d.change)+'</div>':'')+'<button type="button" class="btn next" data-act="next" id="next-btn">次のお客様へ</button><button type="button" class="btn danger" data-act="undoorder">この会計を取り消す</button></div>';
       var nb=document.getElementById('next-btn');if(nb)nb.focus();
       return;
     }
@@ -648,7 +694,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     }else if(step===3){
       var change=rec===''?null:(parseInt(rec,10)||0)-t.total;
       h='<div class="fs" role="dialog" aria-modal="true" aria-labelledby="co-title"><div class="fs-head"><div><h3 id="co-title">お預かり金額の入力</h3><span class="note">'+dayLabel(ui.day)+' ・ '+staff+'</span></div><button type="button" class="btn danger" data-act="cancelcart">中止</button></div>';
-      h+='<div class="fs-body"><div class="sum2"><div><small>お支払い金額</small><b class="num">'+yen(t.total)+'</b></div><div class="sum2-lines">'+t.items.map(function(it){return esc(it.name)+' × '+it.qty;}).join('<br>')+'</div></div>';
+      h+='<div class="fs-body"><div class="sum2"><div><small>お支払い金額</small><b class="num">'+yen(t.total)+'</b></div><div class="sum2-lines">'+dispLines(t.items).map(function(l){return esc(l.label)+' × '+l.qty;}).join('<br>')+'</div></div>';
       h+='<div class="cash"><label id="co-recv-l">お預かり金額</label><div id="co-recv" class="recv num" role="status" aria-live="polite">'+recvText(rec)+'</div><div class="quick"><button type="button" data-act="recv" data-v="exact">ちょうど</button><button type="button" data-act="recv" data-v="500">500</button><button type="button" data-act="recv" data-v="1000">1,000</button><button type="button" data-act="recv" data-v="5000">5,000</button><button type="button" data-act="recv" data-v="10000">10,000</button></div><div class="tenkey" role="group" aria-label="テンキー">'+['7','8','9','4','5','6','1','2','3','0','00','⌫'].map(function(k){return '<button type="button" data-act="key" data-v="'+k+'" aria-label="'+(k==='⌫'?'1文字消す':k)+'">'+k+'</button>';}).join('')+'</div><div class="change'+(change!==null&&change<0?' short':'')+'" id="co-change">'+changeText(change)+'</div></div></div>';
       h+='<div class="fs-foot"><div class="actions" style="grid-template-columns:1fr 2fr"><button type="button" class="btn ghost" data-act="back">戻る</button><button type="button" class="btn" id="co-ok" data-act="confirm">会計を確定</button></div></div></div>';
     }else{
@@ -659,6 +705,12 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
         var q=ui.cart.qty[p.id]||0;
         h+='<div class="item"><div class="nm"><b>'+esc(p.name)+'</b><div class="num">'+yen(p.price)+'</div></div><div class="step"><button type="button" data-act="dec" data-id="'+esc(p.id)+'" aria-label="'+esc(p.name)+'を1つ減らす">−</button><span class="q num" id="q-'+esc(p.id)+'">'+q+'</span><button type="button" data-act="inc" data-id="'+esc(p.id)+'" aria-label="'+esc(p.name)+'を1つ増やす">＋</button></div></div>';
       });
+      var S=setCfg(),sq=ui.cart.sets||0;
+      if(S.ok){
+        h+='<div class="item set"><div class="nm"><b>セット（ロール＋ティー）</b><div class="num">'+yen(S.price)+' <small>'+(S.list>S.price?'通常 '+yen(S.list)+'・'+yen(S.list-S.price)+'お得':'通常 '+yen(S.list))+'</small></div></div><div class="step"><button type="button" data-act="sdec" aria-label="セットを1つ減らす">−</button><span class="q num" id="q-set">'+sq+'</span><button type="button" data-act="sinc" aria-label="セットを1つ増やす">＋</button></div></div>';
+      }else{
+        h+='<div class="item set off"><div class="nm"><b>セット（ロール＋ティー）</b><div class="note" style="opacity:1;font-size:14px">セット料金が未設定です。「設定」で料金を入れると使えます。</div></div></div>';
+      }
       h+='</div></div><div class="fs-foot"><div class="total"><span>合計</span><b class="num" id="co-total">'+yen(t.total)+'</b></div><div class="actions"><button type="button" class="btn ghost" data-act="clearcart">クリア</button><button type="button" class="btn" id="co-ok" data-act="next1"'+(t.qty===0?' disabled':'')+'>合計金額を表示</button></div></div></div>';
     }
     root.innerHTML=h;
@@ -668,6 +720,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
   function refreshCart(){
     var t=cartTotals();
     sortedProducts().forEach(function(p){var el=document.getElementById('q-'+p.id);if(el)el.textContent=ui.cart.qty[p.id]||0;});
+    var qs=document.getElementById('q-set');if(qs)qs.textContent=ui.cart.sets||0;
     var tot=document.getElementById('co-total');if(tot)tot.textContent=yen(t.total);
     var ok=document.getElementById('co-ok');if(ok&&(ui.cart.step||1)===1)ok.disabled=t.qty===0;
     var rec=ui.cart.received,ch=rec===''?null:(parseInt(rec,10)||0)-t.total;
@@ -680,6 +733,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     if(rec&&rec<t.total){toast('お預かり金額が足りません');return;}
     var id=uid();
     var order={id:id,day:ui.day,items:t.items,total:t.total,received:rec,change:rec?rec-t.total:0,by:getName(),ts:Date.now(),status:'making'};
+    if(t.sets) order.sets=t.sets;
     if(ticketOn()) order.ticket=takeTicket(ui.day);
     guard(backend.set('orders',id,order));
     enqueue(order,'売上');
@@ -745,9 +799,11 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     else if(a==='next2'){ui.cart.step=3;renderModal();}
     else if(a==='back'){ui.cart.step=Math.max(1,(ui.cart.step||1)-1);renderModal();}
     else if(a==='cancelcart'){ui.cart=null;renderModal();}
-    else if(a==='clearcart'){ui.cart.qty={};ui.cart.received='';renderModal();}
+    else if(a==='clearcart'){ui.cart.qty={};ui.cart.sets=0;ui.cart.received='';renderModal();}
     else if(a==='inc'){ui.cart.qty[id]=Math.min(99,(ui.cart.qty[id]||0)+1);refreshCart();}
     else if(a==='dec'){ui.cart.qty[id]=Math.max(0,(ui.cart.qty[id]||0)-1);refreshCart();}
+    else if(a==='sinc'){ui.cart.sets=Math.min(99,(ui.cart.sets||0)+1);refreshCart();}
+    else if(a==='sdec'){ui.cart.sets=Math.max(0,(ui.cart.sets||0)-1);refreshCart();}
     else if(a==='recv'){var tot=cartTotals().total;setRecv(String(v==='exact'?tot:v));}
     else if(a==='key'){var cur=ui.cart.received;if(v==='⌫')cur=cur.slice(0,-1);else{cur=(cur+v).replace(/^0+/,'');if(cur.length>7)return;}setRecv(cur);}
     else if(a==='confirm'){confirmOrder();}
@@ -785,6 +841,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
   document.addEventListener('change',function(ev){
     var t=ev.target;
     if(t.id==='tk-prefix'){lsSet('reji-ticket-prefix',t.value.trim().toUpperCase().slice(0,2));toast('端末の記号を保存しました');return;}
+    if(t.id==='set-price'){var sv=parseInt(t.value,10);if(sv>0){lsSet('reji-set-price',sv);toast('セット料金を保存しました');}else{lsSet('reji-set-price','');t.value='';toast('セット料金を未設定にしました');}var si=document.getElementById('set-info');if(si)si.textContent='セット：'+setInfoText();return;}
     if(t.id==='tk-next'){lsSet('reji-ticket-n-'+ui.day,Math.max(1,parseInt(t.value,10)||1));toast('次の番号を保存しました');return;}
     if(t.dataset&&t.dataset.pname){var p=state.products.filter(function(x){return x.id===t.dataset.pname;})[0];if(p&&t.value.trim())guard(backend.set('products',p.id,Object.assign({},p,{name:t.value.trim()})));}
     else if(t.dataset&&t.dataset.pprice){var q=state.products.filter(function(x){return x.id===t.dataset.pprice;})[0];if(q)guard(backend.set('products',q.id,Object.assign({},q,{price:Math.max(0,parseInt(t.value,10)||0)})));}

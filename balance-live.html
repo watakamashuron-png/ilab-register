@@ -150,8 +150,8 @@ td.n{font-variant-numeric:tabular-nums}
 
 <div class="card"><h2>収支サマリー</h2><div id="summary"></div></div>
 <section class="card" id="sim" aria-live="polite">
-  <h2>11/21（土）の販売シミュレーター</h2>
-  <p class="sub">11/20（金）までの売上は確定として扱い、11/21（土）に売る分を足した収支を見られます。単価・セット料金・仕入れ済み数は変えられます（この端末に保存されます）。集金は含めません。</p>
+  <h2>販売シミュレーター</h2>
+  <p class="sub">レジに入っている売上はすべて確定として扱い、11/21（土）の営業終了までに、まだ売れていない分を足した収支を見られます。単価・セット料金・仕入れ済み数は変えられます（この端末に保存されます）。集金は含めません。</p>
   <div id="simWait" class="sim-wait">レジの売上を読み込み中です…</div>
   <div id="simBody" hidden>
     <div class="stiles" id="simFixed"></div>
@@ -160,15 +160,15 @@ td.n{font-variant-numeric:tabular-nums}
     <p class="sub" id="gapLead"></p>
     <div class="routes" id="routes"></div>
 
-    <h3 class="sim-h">② 11/21（土）に売る個数を入れて確かめる</h3>
+    <h3 class="sim-h">② 11/21（土）の、まだ売れていない分を入れて確かめる</h3>
     <div class="sim-grid">
       <div class="sim-in" id="simRoll">
-        <div class="si-h"><span class="sw" style="background:var(--seg1)"></span>ソーセージロール<span class="si-p">11/21に売る分</span></div>
-        <div class="si-row"><button type="button" data-k="nR" data-d="-10" aria-label="ロールを10個減らす">−</button><input type="number" id="nR" inputmode="numeric" min="0" step="1" value="0" aria-label="11/21に売るロールの数"><span class="un">個</span><button type="button" data-k="nR" data-d="10" aria-label="ロールを10個増やす">＋</button></div>
+        <div class="si-h"><span class="sw" style="background:var(--seg1)"></span>ソーセージロール<span class="si-p">11/21の残り</span></div>
+        <div class="si-row"><button type="button" data-k="nR" data-d="-10" aria-label="ロールを10個減らす">−</button><input type="number" id="nR" inputmode="numeric" min="0" step="1" value="0" aria-label="11/21のまだ売れていないロールの数"><span class="un">個</span><button type="button" data-k="nR" data-d="10" aria-label="ロールを10個増やす">＋</button></div>
       </div>
       <div class="sim-in" id="simTea">
-        <div class="si-h"><span class="sw" style="background:var(--blue)"></span>アップルティー<span class="si-p">11/21に売る分</span></div>
-        <div class="si-row"><button type="button" data-k="nT" data-d="-10" aria-label="ティーを10杯減らす">−</button><input type="number" id="nT" inputmode="numeric" min="0" step="1" value="0" aria-label="11/21に売るティーの数"><span class="un">杯</span><button type="button" data-k="nT" data-d="10" aria-label="ティーを10杯増やす">＋</button></div>
+        <div class="si-h"><span class="sw" style="background:var(--blue)"></span>アップルティー<span class="si-p">11/21の残り</span></div>
+        <div class="si-row"><button type="button" data-k="nT" data-d="-10" aria-label="ティーを10杯減らす">−</button><input type="number" id="nT" inputmode="numeric" min="0" step="1" value="0" aria-label="11/21のまだ売れていないティーの数"><span class="un">杯</span><button type="button" data-k="nT" data-d="10" aria-label="ティーを10杯増やす">＋</button></div>
       </div>
       <div class="sim-in" id="simSet">
         <div class="si-h"><span class="sw" style="background:var(--muted)"></span>うちセットで売る数<span class="si-p">ロール1＋ティー1</span></div>
@@ -211,12 +211,13 @@ td.n{font-variant-numeric:tabular-nums}
 (function(){
 'use strict';
 var MEMBERS=17, EXP=124483, REFUND=10000;
-var A=null;   /* 11/20までの確定分：{rev, roll, tea}。レジから読めるまで null */
+var A=null;   /* レジの売上合計（確定扱い）：{rev, roll, tea, at}。レジから読めるまで null */
 var C={pr:350,pt:150,ps:0,br:300,bt:300,ur:83,ut:30,nR:0,nT:0,nS:0,refund:false};
 var KEY='bal-sim-v1';
 function $(id){return document.getElementById(id);}
 function fmt(v){return Math.round(Math.abs(v)).toLocaleString('ja-JP');}
 function sg(v){v=Math.round(v);return v>0?'+'+fmt(v):v<0?'−'+fmt(v):'±0';}
+function hm(t){if(!t)return '';var d=new Date(t+9*3600000),z=function(n){return (n<10?'0':'')+n;};return z(d.getUTCHours())+':'+z(d.getUTCMinutes())+':'+z(d.getUTCSeconds());}
 function nn(v){v=Math.round(+v);return isFinite(v)&&v>0?v:0;}
 function load(){
   try{
@@ -227,7 +228,7 @@ function load(){
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(C));}catch(e){}}
 function extra(tr,tt){return C.ur*Math.max(0,tr-C.br)+C.ut*Math.max(0,tt-C.bt);}   /* 仕入れ済み数を超えた分の追加材料費 */
-/* 確定分に、11/21に売る分（ロール nR・ティー nT・うちセット nS）を足した収支 */
+/* 確定分に、11/21の残り（ロール nR・ティー nT・うちセット nS）を足した収支 */
 function profit(nR,nT,nS){
   return A.rev+C.pr*(nR-nS)+C.pt*(nT-nS)+C.ps*nS-EXP-extra(A.roll+nR,A.tea+nT)+(C.refund?REFUND:0);
 }
@@ -256,7 +257,7 @@ function renderSim(){
   /* 確定分 */
   var p0=profit(0,0,0);
   $('simFixed').innerHTML=
-    stile('11/20（金）までの売上（確定）',fmt(A.rev)+'円','ロール'+A.roll+'個・ティー'+A.tea+'杯')+
+    stile('レジの売上合計（確定）',fmt(A.rev)+'円','ロール'+A.roll+'個・ティー'+A.tea+'杯／'+hm(A.at)+'時点')+
     stile('支出合計（実績）',fmt(EXP)+'円','スプレッドシートの値')+
     stile('今の収支',sg(p0)+'円',(C.refund?'誓約金返納を含む／':'')+'一人あたり '+sg(p0/MEMBERS)+'円','' )+
     stile('仕入れ済み',C.br+' / '+C.bt,'ロール / ティー（超えた分は追加材料費）');
@@ -289,11 +290,11 @@ function renderSim(){
   var good=p>=0,bd=$('sBadge');bd.className='badge '+(good?'good':'bad');
   $('sBadgeIc').textContent=good?'✓':'!';$('sBadgeTx').textContent=good?'黒字':'赤字';
   $('sPer').innerHTML='一人あたり '+sg(p/MEMBERS)+'円 <small>（'+MEMBERS+'人で割った場合）</small>';
-  $('sEq').textContent='確定売上'+fmt(A.rev)+'円 ＋ 11/21に売る分'+fmt(rev)+'円'+(C.refund?' ＋ 誓約金10,000円':'')+' − 支出'+fmt(EXP)+'円'+(ex2?' − 追加材料費'+fmt(ex2)+'円':'');
+  $('sEq').textContent='確定売上'+fmt(A.rev)+'円 ＋ 11/21の残り'+fmt(rev)+'円'+(C.refund?' ＋ 誓約金10,000円':'')+' − 支出'+fmt(EXP)+'円'+(ex2?' − 追加材料費'+fmt(ex2)+'円':'');
   var xr=Math.max(0,A.roll+C.nR-C.br),xt=Math.max(0,A.tea+C.nT-C.bt);
   $('simRes').innerHTML=
-    stile('11/21に売る分の売上',fmt(rev)+'円','ロール単品'+single+'個・ティー単品'+singleT+'杯'+(C.nS?'・セット'+C.nS+'組':''))+
-    stile('売上合計',fmt(A.rev+rev)+'円','11/20までの確定＋11/21の見込み')+
+    stile('11/21の残りの売上',fmt(rev)+'円','ロール単品'+single+'個・ティー単品'+singleT+'杯'+(C.nS?'・セット'+C.nS+'組':''))+
+    stile('売上合計',fmt(A.rev+rev)+'円','レジの合計＋11/21の残り')+
     stile('追加購入が必要な数','ロール'+xr+'個<br>ティー'+xt+'杯','仕入れ済みを超える分')+
     stile('追加材料費',fmt(ex2)+'円',xr||xt?'ロール'+fmt(C.ur*xr)+'円＋ティー'+fmt(C.ut*xt)+'円':'追加購入なし');
 }
@@ -312,7 +313,7 @@ function bindSim(){
 window.simSetExp=function(v){if(v!=null&&isFinite(v)&&v!==EXP){EXP=v;renderSim();}};
 window.simSetActual=function(a){
   if(!a)return;
-  if(!A||A.rev!==a.rev||A.roll!==a.roll||A.tea!==a.tea){A=a;renderSim();}
+  if(!A||A.rev!==a.rev||A.roll!==a.roll||A.tea!==a.tea||A.at!==a.at){A=a;renderSim();}
 };
 load();bindSim();renderSim();
 })();
@@ -445,7 +446,7 @@ load();bindSim();renderSim();
     document.getElementById('alert').innerHTML=al;
 
     if(window.simSetExp&&exp!=null)window.simSetExp(exp);
-    if(window.simSetActual&&sa){var bp=sa.byProd||{};window.simSetActual({rev:sa.total,roll:(bp['ソーセージロール']||{}).qty||0,tea:(bp['アップルティー']||{}).qty||0});}
+    if(window.simSetActual&&sa){var bp=sa.byProd||{};window.simSetActual({at:S.salesAt,rev:sa.total,roll:(bp['ソーセージロール']||{}).qty||0,tea:(bp['アップルティー']||{}).qty||0});}
     var bal=(sales==null||exp==null)?null:sales-exp;
     var t='';
     t+=tile('売上',sales==null?'―':yen(sales));

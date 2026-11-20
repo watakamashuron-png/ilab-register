@@ -644,6 +644,25 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     h+='<p class="note">単価を変えても、過去の会計は当時の単価のまま集計されます。セットの料金は、空にすると使えなくなり、この端末だけに保存されます。</p></div></section>';
     return h;
   }
+  /* 売上確認の「支出−売上」: 文字が重なるときだけ、重ならない大きさまで自動で小さくする（収まるときは元の大きさのまま） */
+  function fitSales(){
+    var eq=document.querySelector('#view .eq');
+    if(eq){
+      var bs=Array.prototype.slice.call(eq.querySelectorAll('b'));
+      bs.forEach(function(b){b.style.fontSize='';});
+      var size=parseFloat(getComputedStyle(bs[0]).fontSize)||40,n=0;
+      var over=function(){return eq.scrollWidth>eq.clientWidth+1||Array.prototype.some.call(eq.children,function(d){return d.scrollWidth>d.clientWidth+1;});};
+      while(over()&&size>12&&n<80){size-=1;bs.forEach(function(b){b.style.fontSize=size+'px';});n++;}
+    }
+    var rb=document.querySelector('#view .eqres b');
+    if(rb){
+      rb.style.fontSize='';
+      var rs=parseFloat(getComputedStyle(rb).fontSize)||40,m=0;
+      while(rb.scrollWidth>rb.clientWidth+1&&rs>14&&m<80){rs-=1;rb.style.fontSize=rs+'px';m++;}
+    }
+  }
+  window.addEventListener('resize',function(){if(ui.tab==='sales')fitSales();});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){if(ui.tab==='sales')fitSales();});
   function render(){
     var v=document.getElementById('view');
     var keep=v.scrollTop;
@@ -652,6 +671,7 @@ nav#tabs button{font-size:13px;padding-left:2px;padding-right:2px}
     v.innerHTML=ui.tab==='register'?registerView():ui.tab==='board'?boardView():ui.tab==='sales'?salesView():ui.tab==='qr'?qrView():settingsView();
     var tb=document.getElementById('tab-board');if(tb){var mc=makingCount();tb.innerHTML='受け渡し'+(mc?'<span class="tabbadge">'+mc+'</span>':'');}
     v.scrollTop=keep;
+    fitSales();
     document.querySelectorAll('#tabs button').forEach(function(b){b.setAttribute('aria-current',b.dataset.tab===ui.tab);});
   }
 
